@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     api_port: int = 8000
     llm_default_model: str = "openai/gpt-4o"
     llm_api_base: str | None = None
+    dashscope_api_base: str | None = None
     llm_timeout: int = 60
     llm_temperature: float = 0.0
     qdrant_path: str = "./data/qdrant"

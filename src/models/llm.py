@@ -5,6 +5,14 @@ from litellm import completion
 from src.config.settings import settings
 
 
+def _resolve_api_base(model_name: str) -> str | None:
+    if settings.llm_api_base:
+        return settings.llm_api_base
+    if model_name.startswith("dashscope/") and settings.dashscope_api_base:
+        return settings.dashscope_api_base
+    return None
+
+
 def chat_completion(
     messages: list[dict[str, Any]],
     model: str | None = None,
@@ -12,8 +20,9 @@ def chat_completion(
     max_tokens: int | None = None,
     **kwargs: Any,
 ) -> str:
+    model_name = model or settings.llm_default_model
     req: dict[str, Any] = {
-        "model": model or settings.llm_default_model,
+        "model": model_name,
         "messages": messages,
         "timeout": settings.llm_timeout,
         "temperature": settings.llm_temperature if temperature is None else temperature,
@@ -22,8 +31,9 @@ def chat_completion(
     if max_tokens is not None:
         req["max_tokens"] = max_tokens
 
-    if settings.llm_api_base:
-        req["api_base"] = settings.llm_api_base
+    api_base = _resolve_api_base(model_name)
+    if api_base:
+        req["api_base"] = api_base
 
     req.update(kwargs)
 

@@ -1,6 +1,6 @@
 # ai-center-v6
 
-基于 LangGraph、FastAPI、LiteLLM 和 Docling 的 AI 应用骨架项目。
+基于 LangGraph、FastAPI、LiteLLM、Docling 和 Qdrant 的 AI 应用骨架项目。
 
 ## 目录结构
 
@@ -48,7 +48,7 @@ from src.models.llm import chat_completion
 answer = chat_completion(
     messages=[
         {"role": "system", "content": "你是企业AI中台助手"},
-        {"role": "user", "content": "请解释一下RAG和Agentic RAG的区别"},
+        {"role": "user", "content": "请解释一下 RAG 和 Agentic RAG 的区别"},
     ]
 )
 
@@ -60,6 +60,7 @@ print(answer)
 ```env
 OPENAI_API_KEY=your-openai-key
 ANTHROPIC_API_KEY=your-anthropic-key
+DASHSCOPE_API_KEY=your-dashscope-key
 LLM_DEFAULT_MODEL=openai/gpt-4o
 LLM_TIMEOUT=60
 LLM_TEMPERATURE=0
@@ -70,6 +71,27 @@ LLM_TEMPERATURE=0
 ```env
 LLM_API_BASE=http://localhost:8000/v1
 ```
+
+### 阿里云 DashScope / Qwen
+
+LiteLLM 可直接使用 `dashscope/<model>` 模型名。例如：
+
+```env
+DASHSCOPE_API_KEY=your-dashscope-key
+LLM_DEFAULT_MODEL=dashscope/qwen-plus
+DASHSCOPE_API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1
+```
+
+新加坡地域可改为：
+
+```env
+DASHSCOPE_API_BASE=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
+```
+
+项目里的 [llm.py](/D:/code-ai/ai-center-v6/src/models/llm.py) 已支持：
+
+- 通用覆盖：`LLM_API_BASE`
+- DashScope 专用：`DASHSCOPE_API_BASE`
 
 ## Docling 最简接入
 

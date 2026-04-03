@@ -12,11 +12,10 @@ from src.knowledge.service import KnowledgeIngestionService
 def main() -> None:
     parser = argparse.ArgumentParser(description="Parse documents with Docling and index them into Qdrant.")
     parser.add_argument("source", nargs="?", default="data/raw", help="File or directory to ingest.")
-    parser.add_argument("--embedding-model", default=None, help="Override the embedding model.")
     args = parser.parse_args()
 
     service = KnowledgeIngestionService()
-    summary = service.ingest_path(Path(args.source), embedding_model=args.embedding_model)
+    summary = service.ingest_path(Path(args.source))
     print(
         f"Ingested {summary.documents} document(s), {summary.chunks} chunk(s) "
         f"into {summary.collection}"

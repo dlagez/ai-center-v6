@@ -13,9 +13,8 @@ def test_ingest_endpoint_returns_summary(monkeypatch, tmp_path) -> None:
     source.write_text("placeholder", encoding="utf-8")
 
     class _FakeService:
-        def ingest_path(self, source, embedding_model=None):
+        def ingest_path(self, source):
             assert Path(source) == source_path
-            assert embedding_model == "dashscope/text-embedding-v3"
             return IngestSummary(
                 success=True,
                 source=str(source),
@@ -29,10 +28,7 @@ def test_ingest_endpoint_returns_summary(monkeypatch, tmp_path) -> None:
 
     response = client.post(
         "/knowledge/ingest",
-        json={
-            "source": str(source),
-            "embedding_model": "dashscope/text-embedding-v3",
-        },
+        json={"source": str(source)},
     )
 
     assert response.status_code == 200
@@ -42,7 +38,7 @@ def test_ingest_endpoint_returns_summary(monkeypatch, tmp_path) -> None:
 
 def test_ingest_endpoint_maps_validation_errors(monkeypatch) -> None:
     class _FakeService:
-        def ingest_path(self, source, embedding_model=None):
+        def ingest_path(self, source):
             raise ValueError("bad source")
 
     monkeypatch.setattr("src.api.routes.KnowledgeIngestionService", lambda: _FakeService())

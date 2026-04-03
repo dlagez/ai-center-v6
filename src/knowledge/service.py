@@ -47,7 +47,6 @@ class KnowledgeIngestionService:
     def ingest_path(
         self,
         source: str | Path,
-        embedding_model: str | None = None,
     ) -> IngestSummary:
         source_path = Path(source)
         if not source_path.exists():
@@ -61,7 +60,7 @@ class KnowledgeIngestionService:
         chunks = 0
         for item in sources:
             parsed = self.parser.parse(item)
-            indexed_chunks = self.indexer.index_document(parsed, embedding_model=embedding_model)
+            indexed_chunks = self.indexer.index_document(parsed)
             documents += 1
             chunks += len(indexed_chunks)
 

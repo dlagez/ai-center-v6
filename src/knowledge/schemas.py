@@ -39,3 +39,10 @@ class IngestSummary(BaseModel):
     documents: int
     chunks: int
     collection: str
+
+
+class SearchSummary(BaseModel):
+    query: str
+    limit: int
+    collection: str
+    results: list[SearchResult] = Field(default_factory=list)

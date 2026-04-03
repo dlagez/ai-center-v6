@@ -2,7 +2,8 @@ from pathlib import Path
 
 from src.knowledge.indexer import QdrantIndexer
 from src.knowledge.parser import DoclingParser
-from src.knowledge.schemas import IngestSummary
+from src.knowledge.retriever import QdrantRetriever
+from src.knowledge.schemas import IngestSummary, SearchSummary
 
 SUPPORTED_EXTENSIONS = {
     ".pdf",
@@ -70,4 +71,24 @@ class KnowledgeIngestionService:
             documents=documents,
             chunks=chunks,
             collection=self.indexer.store.collection_name,
+        )
+
+
+class KnowledgeSearchService:
+    def __init__(self, retriever: QdrantRetriever | None = None) -> None:
+        self.retriever = retriever or QdrantRetriever()
+
+    def search(self, query: str, limit: int = 5) -> SearchSummary:
+        query_text = query.strip()
+        if not query_text:
+            raise ValueError("Query must not be empty")
+        if limit <= 0:
+            raise ValueError("Limit must be greater than 0")
+
+        results = self.retriever.search_text(query_text, limit=limit)
+        return SearchSummary(
+            query=query_text,
+            limit=limit,
+            collection=self.retriever.store.collection_name,
+            results=results,
         )

@@ -9,6 +9,8 @@ class IngestSummary(BaseModel):
     documents: int
     chunks: int
     collection: str
+    trace_id: str | None = None
+    trace_url: str | None = None
 
 
 class SearchSummary(BaseModel):
@@ -16,3 +18,5 @@ class SearchSummary(BaseModel):
     limit: int
     collection: str
     results: list[SearchResult] = Field(default_factory=list)
+    trace_id: str | None = None
+    trace_url: str | None = None

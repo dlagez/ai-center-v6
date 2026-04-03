@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
 from src.api.schemas import AgenticRagRequest, IngestRequest, SearchRequest
+from src.observability import observe
 from src.rag.agentic.service import AgenticRagService
 from src.rag.service import KnowledgeIngestionService, KnowledgeSearchService
 
@@ -12,7 +13,12 @@ async def ingest_knowledge(request: IngestRequest) -> dict:
     service = KnowledgeIngestionService()
 
     try:
-        result = service.ingest_path(source=request.source)
+        with observe(
+            name="api.ingest_knowledge",
+            as_type="span",
+            input=request.model_dump(),
+        ):
+            result = service.ingest_path(source=request.source)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
@@ -26,7 +32,12 @@ async def search_knowledge(request: SearchRequest) -> dict:
     service = KnowledgeSearchService()
 
     try:
-        result = service.search(query=request.query, limit=request.limit)
+        with observe(
+            name="api.search_knowledge",
+            as_type="span",
+            input=request.model_dump(),
+        ):
+            result = service.search(query=request.query, limit=request.limit)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
@@ -40,7 +51,12 @@ async def agentic_rag_answer(request: AgenticRagRequest) -> dict:
     service = AgenticRagService()
 
     try:
-        result = service.answer(question=request.question, limit=request.limit)
+        with observe(
+            name="api.agentic_rag_answer",
+            as_type="span",
+            input=request.model_dump(),
+        ):
+            result = service.answer(question=request.question, limit=request.limit)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:

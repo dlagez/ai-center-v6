@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     llm_temperature: float = 0.0
     embedding_model: str = "openai/text-embedding-v3"
     embedding_batch_size: int = 32
+    langfuse_enabled: bool = True
+    langfuse_public_key: str | None = None
+    langfuse_secret_key: str | None = None
+    langfuse_base_url: str = "https://cloud.langfuse.com"
+    langfuse_debug: bool = False
+    langfuse_flush_at: int = 1
     knowledge_chunk_size: int = 1200
     knowledge_chunk_overlap: int = 200
     qdrant_path: str = "./data/qdrant"

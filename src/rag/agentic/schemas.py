@@ -17,6 +17,8 @@ class AgenticRagOutput(BaseModel):
     retrieval_attempts: int
     retrieval_query: str
     sources: list[SearchResult] = Field(default_factory=list)
+    trace_id: str | None = None
+    trace_url: str | None = None
 
 
 class AgenticRagState(TypedDict, total=False):

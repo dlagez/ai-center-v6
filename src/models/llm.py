@@ -3,6 +3,7 @@ from typing import Any
 from litellm import completion
 
 from src.config.settings import settings
+from src.observability import observe
 
 
 def _resolve_api_base(model_name: str) -> str | None:
@@ -21,11 +22,12 @@ def chat_completion(
     **kwargs: Any,
 ) -> str:
     model_name = model or settings.llm_default_model
+    resolved_temperature = settings.llm_temperature if temperature is None else temperature
     req: dict[str, Any] = {
         "model": model_name,
         "messages": messages,
         "timeout": settings.llm_timeout,
-        "temperature": settings.llm_temperature if temperature is None else temperature,
+        "temperature": resolved_temperature,
     }
 
     if max_tokens is not None:
@@ -39,6 +41,20 @@ def chat_completion(
 
     req.update(kwargs)
 
-    resp = completion(**req)
-    content = resp.choices[0].message.content
-    return content if content is not None else ""
+    with observe(
+        name="litellm.chat_completion",
+        as_type="generation",
+        input=messages,
+        metadata={"api_base": api_base},
+        model=model_name,
+        model_parameters={
+            "temperature": resolved_temperature,
+            "max_tokens": max_tokens,
+            "timeout": settings.llm_timeout,
+        },
+    ) as observation:
+        resp = completion(**req)
+        content = resp.choices[0].message.content or ""
+        if observation is not None:
+            observation.update(output=content)
+        return content

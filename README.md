@@ -165,3 +165,24 @@ Agentic RAG 问答：
 - 在 `src/models/` 中继续扩展 LiteLLM 多模型路由
 - 在 `src/tools/` 中定义工具调用
 - 在 `tests/` 中补充单元测试和集成测试
+## Langfuse Cloud
+
+Set these values in `.env` to enable Langfuse Cloud tracing:
+
+```env
+LANGFUSE_ENABLED=true
+LANGFUSE_PUBLIC_KEY=pk-lf-...
+LANGFUSE_SECRET_KEY=sk-lf-...
+LANGFUSE_BASE_URL=https://cloud.langfuse.com
+```
+
+Current tracing coverage:
+
+- `POST /knowledge/ingest`
+- `POST /knowledge/search`
+- `POST /rag/agentic-answer`
+- LiteLLM chat generations
+- LiteLLM embeddings
+- Agentic RAG graph nodes
+
+Successful API responses now include `trace_id` and `trace_url` when Langfuse is enabled.

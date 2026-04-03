@@ -93,6 +93,24 @@ parsed = parser.parse(Path("data/raw/example.pdf"))
 print(parsed.text[:2000])
 ```
 
+## Qdrant 最简接入
+
+向量库已接入 Qdrant 本地模式，默认使用磁盘持久化路径：
+
+- 存储入口：[store.py](/D:/code-ai/ai-center-v6/src/knowledge/store.py)
+- 写入入口：[indexer.py](/D:/code-ai/ai-center-v6/src/knowledge/indexer.py)
+- 检索入口：[retriever.py](/D:/code-ai/ai-center-v6/src/knowledge/retriever.py)
+
+最小配置：
+
+```env
+QDRANT_PATH=./data/qdrant
+QDRANT_COLLECTION=default_knowledge
+EMBEDDING_DIMENSION=1536
+```
+
+本地模式使用 `QdrantClient(path=...)`，开发阶段不需要单独启动 Qdrant 服务。
+
 ## 后续建议
 
 - 在 `src/graphs/` 中实现 LangGraph 工作流

@@ -13,4 +13,4 @@ build/
 Thumbs.db
 .idea/
 .vscode/
-data/qdrant/
+data/

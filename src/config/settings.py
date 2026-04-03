@@ -15,9 +15,10 @@ class Settings(BaseSettings):
     llm_default_model: str = "openai/gpt-4o"
     llm_api_base: str | None = None
     dashscope_api_base: str | None = None
+    dashscope_api_key: str | None = None
     llm_timeout: int = 60
     llm_temperature: float = 0.0
-    embedding_model: str = "text-embedding-3-small"
+    embedding_model: str = "openai/text-embedding-v3"
     embedding_batch_size: int = 32
     knowledge_chunk_size: int = 1200
     knowledge_chunk_overlap: int = 200

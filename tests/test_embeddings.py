@@ -14,7 +14,7 @@ class _FakeEmbeddingResponse:
 def test_embed_texts_uses_dashscope_api_base(monkeypatch) -> None:
     captured = {}
 
-    monkeypatch.setattr(embeddings.settings, "llm_api_base", None)
+    monkeypatch.setattr(embeddings.settings, "dashscope_api_key", "secret")
     monkeypatch.setattr(
         embeddings.settings,
         "dashscope_api_base",
@@ -27,7 +27,10 @@ def test_embed_texts_uses_dashscope_api_base(monkeypatch) -> None:
 
     monkeypatch.setattr(embeddings, "embedding", fake_embedding)
 
-    vectors = embeddings.embed_texts(["hello"], model="dashscope/text-embedding-v3")
+    vectors = embeddings.embed_texts(["hello"], model="openai/text-embedding-v3")
 
     assert vectors == [[0.1, 0.2]]
+    assert captured["model"] == "openai/text-embedding-v3"
     assert captured["api_base"] == "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    assert captured["encoding_format"] == "float"
+    assert captured["api_key"] == "secret"

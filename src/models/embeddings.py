@@ -3,7 +3,12 @@ from typing import Any
 from litellm import embedding
 
 from src.config.settings import settings
-from src.models.llm import _resolve_api_base
+
+
+def _extract_embedding_vector(item: Any) -> list[float]:
+    if isinstance(item, dict):
+        return list(item["embedding"])
+    return list(item.embedding)
 
 
 def embed_texts(
@@ -15,7 +20,6 @@ def embed_texts(
         return []
 
     model_name = model or settings.embedding_model
-    api_base = _resolve_api_base(model_name)
     vectors: list[list[float]] = []
     batch_size = max(settings.embedding_batch_size, 1)
 
@@ -25,13 +29,16 @@ def embed_texts(
             "model": model_name,
             "input": batch,
             "timeout": settings.llm_timeout,
+            "encoding_format": "float",
         }
-        if api_base:
-            req["api_base"] = api_base
+        if settings.dashscope_api_base:
+            req["api_base"] = settings.dashscope_api_base
+        if settings.dashscope_api_key:
+            req["api_key"] = settings.dashscope_api_key
 
         req.update(kwargs)
         resp = embedding(**req)
-        vectors.extend([list(item.embedding) for item in resp.data])
+        vectors.extend([_extract_embedding_vector(item) for item in resp.data])
 
     return vectors
 

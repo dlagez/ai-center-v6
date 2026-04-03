@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from src.api.app import app
-from src.knowledge.schemas import IngestSummary
+from src.rag.schemas import IngestSummary
 
 client = TestClient(app)
 

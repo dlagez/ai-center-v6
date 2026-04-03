@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
 from src.api.schemas import IngestRequest, SearchRequest
-from src.knowledge.service import KnowledgeIngestionService, KnowledgeSearchService
+from src.rag.service import KnowledgeIngestionService, KnowledgeSearchService
 
 router = APIRouter()
 

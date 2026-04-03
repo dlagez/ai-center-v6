@@ -133,6 +133,26 @@ EMBEDDING_DIMENSION=1536
 
 本地模式使用 `QdrantClient(path=...)`，开发阶段不需要单独启动 Qdrant 服务。
 
+## 常用脚本
+
+文档入库：
+
+```powershell
+.venv\Scripts\python scripts\build_index.py data/raw
+```
+
+知识检索：
+
+```powershell
+.venv\Scripts\python scripts\search_knowledge.py "这套方案的基本思路是什么？" --limit 5
+```
+
+RAG 问答：
+
+```powershell
+.venv\Scripts\python scripts\rag_answer.py "这套方案的基本思路是什么？" --limit 5
+```
+
 ## 后续建议
 
 - 在 `src/graphs/` 中实现 LangGraph 工作流

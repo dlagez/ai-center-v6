@@ -3,7 +3,7 @@ from pathlib import Path
 from src.knowledge.indexer import QdrantIndexer
 from src.knowledge.parser import DoclingParser
 from src.knowledge.retriever import QdrantRetriever
-from src.knowledge.schemas import IngestSummary, SearchSummary
+from src.rag.schemas import IngestSummary, SearchSummary
 
 SUPPORTED_EXTENSIONS = {
     ".pdf",
@@ -45,10 +45,7 @@ class KnowledgeIngestionService:
         self.parser = parser or DoclingParser()
         self.indexer = indexer or QdrantIndexer()
 
-    def ingest_path(
-        self,
-        source: str | Path,
-    ) -> IngestSummary:
+    def ingest_path(self, source: str | Path) -> IngestSummary:
         source_path = Path(source)
         if not source_path.exists():
             raise ValueError(f"Source path does not exist: {source_path}")

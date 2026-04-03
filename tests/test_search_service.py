@@ -1,5 +1,5 @@
 from src.knowledge.schemas import SearchResult
-from src.knowledge.service import KnowledgeSearchService
+from src.rag.service import KnowledgeSearchService
 
 
 def test_search_service_returns_summary() -> None:

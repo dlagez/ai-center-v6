@@ -34,6 +34,8 @@ def chat_completion(
     api_base = _resolve_api_base(model_name)
     if api_base:
         req["api_base"] = api_base
+    if model_name.startswith("dashscope/") and settings.dashscope_api_key:
+        req["api_key"] = settings.dashscope_api_key
 
     req.update(kwargs)
 

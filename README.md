@@ -1,6 +1,6 @@
 # ai-center-v6
 
-基于 LangGraph、FastAPI 和 LiteLLM 的 AI 应用骨架项目。
+基于 LangGraph、FastAPI、LiteLLM 和 Docling 的 AI 应用骨架项目。
 
 ## 目录结构
 
@@ -69,6 +69,28 @@ LLM_TEMPERATURE=0
 
 ```env
 LLM_API_BASE=http://localhost:8000/v1
+```
+
+## Docling 最简接入
+
+知识库层已经接入 Docling，统一把文档转换为 Markdown 文本：
+
+- 解析入口：[parser.py](/D:/code-ai/ai-center-v6/src/knowledge/parser.py)
+- 数据结构：[schemas.py](/D:/code-ai/ai-center-v6/src/knowledge/schemas.py)
+- 简单分块：[chunker.py](/D:/code-ai/ai-center-v6/src/knowledge/chunker.py)
+- 导入脚本：[ingest_docs.py](/D:/code-ai/ai-center-v6/scripts/ingest_docs.py)
+
+示例：
+
+```python
+from pathlib import Path
+
+from src.knowledge.parser import DoclingParser
+
+parser = DoclingParser()
+parsed = parser.parse(Path("data/raw/example.pdf"))
+
+print(parsed.text[:2000])
 ```
 
 ## 后续建议

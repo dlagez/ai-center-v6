@@ -1,15 +1,11 @@
 from pathlib import Path
+import sys
 
-from src.knowledge.parser import DoclingParser
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-
-def main() -> None:
-    parser = DoclingParser()
-
-    file_path = Path("data/raw/example.pdf")
-    parsed = parser.parse(file_path)
-
-    print(parsed.text[:2000])
+from scripts.build_index import main
 
 
 if __name__ == "__main__":

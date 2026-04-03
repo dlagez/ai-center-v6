@@ -4,9 +4,13 @@ from src.config.settings import settings
 
 
 class QdrantStore:
-    def __init__(self) -> None:
-        self.client = QdrantClient(path=settings.qdrant_path)
-        self.collection_name = settings.qdrant_collection
+    def __init__(
+        self,
+        path: str | None = None,
+        collection_name: str | None = None,
+    ) -> None:
+        self.client = QdrantClient(path=path or settings.qdrant_path)
+        self.collection_name = collection_name or settings.qdrant_collection
 
     def close(self) -> None:
         self.client.close()

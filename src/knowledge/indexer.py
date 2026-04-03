@@ -1,13 +1,32 @@
 from qdrant_client import models
 
-from src.knowledge.schemas import DocumentChunk
+from src.knowledge.chunker import chunk_document
+from src.knowledge.schemas import DocumentChunk, ParsedDocument
 from src.knowledge.store import QdrantStore
+from src.models.embeddings import embed_texts
 
 
 class QdrantIndexer:
     def __init__(self, store: QdrantStore | None = None) -> None:
         self.store = store or QdrantStore()
         self.store.ensure_collection()
+
+    def index_document(
+        self,
+        document: ParsedDocument,
+        embedding_model: str | None = None,
+    ) -> list[DocumentChunk]:
+        chunks = chunk_document(document)
+        self.index_chunks(chunks, embedding_model=embedding_model)
+        return chunks
+
+    def index_chunks(
+        self,
+        chunks: list[DocumentChunk],
+        embedding_model: str | None = None,
+    ) -> None:
+        vectors = embed_texts([chunk.text for chunk in chunks], model=embedding_model)
+        self.upsert_chunks(chunks, vectors)
 
     def upsert_chunks(
         self,
@@ -19,15 +38,19 @@ class QdrantIndexer:
 
         points = [
             models.PointStruct(
-                id=index,
+                id=chunk.id,
                 vector=vector,
                 payload={
+                    "doc_id": chunk.doc_id,
                     "source": chunk.source,
                     "index": chunk.index,
                     "text": chunk.text,
+                    "markdown": chunk.markdown,
+                    "headers": chunk.headers,
+                    "metadata": chunk.metadata,
                 },
             )
-            for index, (chunk, vector) in enumerate(zip(chunks, vectors))
+            for chunk, vector in zip(chunks, vectors)
         ]
 
         if not points:

@@ -31,10 +31,7 @@ def test_search_endpoint_returns_results(monkeypatch) -> None:
 
     monkeypatch.setattr("src.api.routes.KnowledgeSearchService", lambda: _FakeService())
 
-    response = client.post(
-        "/knowledge/search",
-        json={"query": "什么是RAG", "limit": 3},
-    )
+    response = client.post("/knowledge/search", json={"query": "什么是RAG", "limit": 3})
 
     assert response.status_code == 200
     assert response.json()["collection"] == "ai-center"

@@ -40,7 +40,7 @@ class VideoInspectionRequest(BaseModel):
         description="Optional prompt sent for each extracted frame. Uses the built-in inspection prompt when omitted.",
     )
     interval_seconds: int = Field(
-        default=20,
+        default=60,
         ge=1,
         le=3600,
         description="Extract one frame every N seconds.",

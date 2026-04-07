@@ -4,8 +4,9 @@ from openpyxl import Workbook
 from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Alignment, Font, PatternFill
 
-from src.media.schemas import VideoInspectionResult
+from src.media.schemas import FrameInspectionResult, VideoInspectionResult
 
+REPORT_SHEET_NAME = "巡检结果"
 REPORT_HEADERS = [
     "视频文件",
     "抽帧间隔(秒)",
@@ -56,23 +57,28 @@ def _apply_layout(worksheet) -> None:
         cell.alignment = Alignment(horizontal="center", vertical="center")
 
 
-def export_video_inspection_report(
-    result: VideoInspectionResult,
-    output_path: str,
-) -> str:
-    workbook = Workbook()
-    worksheet = workbook.active
-    worksheet.title = "巡检结果"
-    worksheet.append(REPORT_HEADERS)
-    _apply_layout(worksheet)
-    worksheet.freeze_panes = "A2"
+class ExcelReportWriter:
+    def __init__(self, *, video_path: str, interval_seconds: int, output_path: str) -> None:
+        self.video_path = video_path
+        self.interval_seconds = interval_seconds
+        self.output_path = Path(output_path).expanduser()
+        _ensure_parent(self.output_path)
 
-    for row_index, frame in enumerate(result.frames, start=2):
+        self.workbook = Workbook()
+        self.worksheet = self.workbook.active
+        self.worksheet.title = REPORT_SHEET_NAME
+        self.worksheet.append(REPORT_HEADERS)
+        _apply_layout(self.worksheet)
+        self.worksheet.freeze_panes = "A2"
+        self._row_index = 2
+        self.save()
+
+    def append_frame(self, frame: FrameInspectionResult) -> None:
         parsed = frame.parsed_result or {}
-        worksheet.append(
+        self.worksheet.append(
             [
-                result.video_path,
-                result.interval_seconds,
+                self.video_path,
+                self.interval_seconds,
                 frame.frame_index,
                 _format_timestamp(frame.timestamp_seconds),
                 "",
@@ -85,18 +91,34 @@ def export_video_inspection_report(
             ]
         )
 
-        worksheet.row_dimensions[row_index].height = 96
+        self.worksheet.row_dimensions[self._row_index].height = 96
         for column_index in range(1, len(REPORT_HEADERS) + 1):
-            cell = worksheet.cell(row=row_index, column=column_index)
+            cell = self.worksheet.cell(row=self._row_index, column=column_index)
             cell.alignment = Alignment(vertical="top", wrap_text=True)
 
         if frame.frame_path and Path(frame.frame_path).is_file():
             image = XLImage(frame.frame_path)
             image.width = 120
             image.height = 90
-            worksheet.add_image(image, f"E{row_index}")
+            self.worksheet.add_image(image, f"E{self._row_index}")
 
-    output = Path(output_path).expanduser()
-    _ensure_parent(output)
-    workbook.save(output)
-    return str(output)
+        self._row_index += 1
+        self.save()
+
+    def save(self) -> str:
+        self.workbook.save(self.output_path)
+        return str(self.output_path)
+
+
+def export_video_inspection_report(
+    result: VideoInspectionResult,
+    output_path: str,
+) -> str:
+    writer = ExcelReportWriter(
+        video_path=result.video_path,
+        interval_seconds=result.interval_seconds,
+        output_path=output_path,
+    )
+    for frame in result.frames:
+        writer.append_frame(frame)
+    return str(writer.output_path)

@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from src.media.prompts import DEFAULT_PERSONNEL_INSPECTION_PROMPT
 from src.media.service import VideoInspectionService
 from src.media.video import ExtractedFrame
@@ -75,17 +73,22 @@ def test_video_inspection_service_removes_frames_when_not_kept(monkeypatch, tmp_
     assert not frames_dir.exists()
 
 
-def test_video_inspection_service_exports_excel(monkeypatch, tmp_path) -> None:
+def test_video_inspection_service_exports_excel_per_frame(monkeypatch, tmp_path) -> None:
     frames_dir = tmp_path / "frames"
     frames_dir.mkdir()
-    frame_path = frames_dir / "frame_000000.jpg"
-    frame_path.write_bytes(b"a")
+    frame_a = frames_dir / "frame_000000.jpg"
+    frame_b = frames_dir / "frame_000001.jpg"
+    frame_a.write_bytes(b"a")
+    frame_b.write_bytes(b"b")
     export_path = tmp_path / "report.xlsx"
 
     monkeypatch.setattr(
         "src.media.service.extract_video_frames",
         lambda **kwargs: (
-            [ExtractedFrame(frame_index=0, timestamp_seconds=0, frame_path=frame_path)],
+            [
+                ExtractedFrame(frame_index=0, timestamp_seconds=0, frame_path=frame_a),
+                ExtractedFrame(frame_index=1, timestamp_seconds=60, frame_path=frame_b),
+            ],
             frames_dir,
         ),
     )
@@ -102,10 +105,17 @@ def test_video_inspection_service_exports_excel(monkeypatch, tmp_path) -> None:
             },
         ),
     )
-    monkeypatch.setattr(
-        "src.media.service.export_video_inspection_report",
-        lambda result, output_path: output_path,
-    )
+
+    appended: list[int] = []
+
+    class FakeExcelReportWriter:
+        def __init__(self, *, video_path, interval_seconds, output_path):
+            self.output_path = output_path
+
+        def append_frame(self, frame):
+            appended.append(frame.frame_index)
+
+    monkeypatch.setattr("src.media.service.ExcelReportWriter", FakeExcelReportWriter)
 
     service = VideoInspectionService()
     result = service.inspect_video(
@@ -115,6 +125,7 @@ def test_video_inspection_service_exports_excel(monkeypatch, tmp_path) -> None:
     )
 
     assert result.excel_path == str(export_path)
+    assert appended == [0, 1]
 
 
 def test_video_inspection_service_uses_default_prompt_when_missing(monkeypatch, tmp_path) -> None:

@@ -1,6 +1,6 @@
 import shutil
 
-from src.media.excel import export_video_inspection_report
+from src.media.excel import ExcelReportWriter
 from src.media.prompts import resolve_inspection_prompt
 from src.media.schemas import FrameInspectionResult, VideoInspectionResult
 from src.media.video import extract_video_frames
@@ -14,7 +14,7 @@ class VideoInspectionService:
         *,
         video_path: str,
         prompt: str | None = None,
-        interval_seconds: int = 20,
+        interval_seconds: int = 60,
         model: str | None = None,
         max_tokens: int | None = None,
         match_field: str | None = None,
@@ -46,7 +46,16 @@ class VideoInspectionService:
 
             frame_results: list[FrameInspectionResult] = []
             excel_path: str | None = None
+            excel_writer: ExcelReportWriter | None = None
             try:
+                if export_excel_path:
+                    excel_writer = ExcelReportWriter(
+                        video_path=video_path,
+                        interval_seconds=interval_seconds,
+                        output_path=export_excel_path,
+                    )
+                    excel_path = str(excel_writer.output_path)
+
                 for frame in extracted_frames:
                     raw_answer, parsed_result = inspect_image(
                         prompt=resolved_prompt,
@@ -61,31 +70,18 @@ class VideoInspectionService:
                         if isinstance(candidate, bool):
                             is_match = candidate
 
-                    frame_results.append(
-                        FrameInspectionResult(
-                            frame_index=frame.frame_index,
-                            timestamp_seconds=frame.timestamp_seconds,
-                            frame_path=str(frame.frame_path),
-                            raw_answer=raw_answer,
-                            parsed_result=parsed_result,
-                            is_match=is_match,
-                        )
+                    frame_result = FrameInspectionResult(
+                        frame_index=frame.frame_index,
+                        timestamp_seconds=frame.timestamp_seconds,
+                        frame_path=str(frame.frame_path),
+                        raw_answer=raw_answer,
+                        parsed_result=parsed_result,
+                        is_match=is_match,
                     )
+                    frame_results.append(frame_result)
 
-                temp_result = VideoInspectionResult(
-                    video_path=video_path,
-                    interval_seconds=interval_seconds,
-                    total_frames=len(frame_results),
-                    match_field=match_field,
-                    has_match=None,
-                    frames_dir=str(resolved_frames_dir),
-                    frames=frame_results,
-                )
-                if export_excel_path:
-                    excel_path = export_video_inspection_report(
-                        temp_result,
-                        output_path=export_excel_path,
-                    )
+                    if excel_writer is not None:
+                        excel_writer.append_frame(frame_result)
             finally:
                 if not keep_frames:
                     shutil.rmtree(resolved_frames_dir, ignore_errors=True)

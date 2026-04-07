@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     dashscope_api_key: str | None = None
     llm_timeout: int = 60
     llm_temperature: float = 0.0
+    media_ffmpeg_binary: str = "ffmpeg"
+    media_frames_dir: str = "./data/media_frames"
     embedding_model: str = "openai/text-embedding-v3"
     embedding_batch_size: int = 32
     sql_agent_dialect: str = "sqlite"

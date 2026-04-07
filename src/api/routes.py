@@ -6,8 +6,10 @@ from src.api.schemas import (
     IngestRequest,
     SearchRequest,
     SqlAgentRequest,
+    VideoInspectionRequest,
     VisionChatRequest,
 )
+from src.media.service import VideoInspectionService
 from src.models.llm import vision_completion
 from src.observability import observe
 from src.rag.agentic.service import AgenticRagService
@@ -118,3 +120,32 @@ async def vision_chat(request: VisionChatRequest) -> dict:
         raise HTTPException(status_code=500, detail=f"Vision chat failed: {exc}") from exc
 
     return {"answer": answer}
+
+
+@router.post("/media/video/inspect")
+async def inspect_video(request: VideoInspectionRequest) -> dict:
+    service = VideoInspectionService()
+
+    try:
+        with observe(
+            name="api.inspect_video",
+            as_type="span",
+            input=request.model_dump(),
+        ):
+            result = service.inspect_video(
+                video_path=request.video_path,
+                prompt=request.prompt,
+                interval_seconds=request.interval_seconds,
+                model=request.model,
+                max_tokens=request.max_tokens,
+                match_field=request.match_field,
+                frames_dir=request.frames_dir,
+                keep_frames=request.keep_frames,
+                export_excel_path=request.export_excel_path,
+            )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Video inspection failed: {exc}") from exc
+
+    return result.model_dump()

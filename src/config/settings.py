@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     api_host: str = "127.0.0.1"
     api_port: int = 8000
     llm_default_model: str = "openai/gpt-4o"
+    llm_vision_model: str = "dashscope/qwen-vl-plus-latest"
     llm_api_base: str | None = None
     dashscope_api_base: str | None = None
     dashscope_api_key: str | None = None

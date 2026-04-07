@@ -1,7 +1,14 @@
 from fastapi import APIRouter, HTTPException
 
 from src.agents.sql.service import SqlAgentService
-from src.api.schemas import AgenticRagRequest, IngestRequest, SearchRequest, SqlAgentRequest
+from src.api.schemas import (
+    AgenticRagRequest,
+    IngestRequest,
+    SearchRequest,
+    SqlAgentRequest,
+    VisionChatRequest,
+)
+from src.models.llm import vision_completion
 from src.observability import observe
 from src.rag.agentic.service import AgenticRagService
 from src.rag.service import KnowledgeIngestionService, KnowledgeSearchService
@@ -88,3 +95,26 @@ async def agentic_rag_answer(request: AgenticRagRequest) -> dict:
         raise HTTPException(status_code=500, detail=f"Agentic RAG failed: {exc}") from exc
 
     return result.model_dump()
+
+
+@router.post("/models/vision/chat")
+async def vision_chat(request: VisionChatRequest) -> dict:
+    try:
+        with observe(
+            name="api.vision_chat",
+            as_type="generation",
+            input=request.model_dump(),
+        ):
+            answer = vision_completion(
+                prompt=request.prompt,
+                image_url=request.image_url,
+                image_path=request.image_path,
+                model=request.model,
+                max_tokens=request.max_tokens,
+            )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Vision chat failed: {exc}") from exc
+
+    return {"answer": answer}

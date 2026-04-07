@@ -186,3 +186,40 @@ Current tracing coverage:
 - Agentic RAG graph nodes
 
 Successful API responses now include `trace_id` and `trace_url` when Langfuse is enabled.
+
+## Vision Chat
+
+Qwen vision models can be used through Bailian's OpenAI-compatible endpoint with mixed text and image content.
+
+Minimal `.env` settings:
+
+```env
+DASHSCOPE_API_KEY=your-dashscope-key
+DASHSCOPE_API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1
+LLM_VISION_MODEL=dashscope/qwen-vl-plus-latest
+```
+
+API:
+
+```text
+POST /models/vision/chat
+```
+
+Request with a public image URL:
+
+```json
+{
+  "prompt": "Describe the image",
+  "image_url": "https://example.com/demo.jpg",
+  "model": "qwen-vl-max-latest"
+}
+```
+
+Request with a local image path on the server:
+
+```json
+{
+  "prompt": "Describe the image",
+  "image_path": "D:/code-ai/ai-center-v6/data/demo.png"
+}
+```

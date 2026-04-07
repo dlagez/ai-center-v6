@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Alignment, Font, PatternFill
 
@@ -64,14 +64,19 @@ class ExcelReportWriter:
         self.output_path = Path(output_path).expanduser()
         _ensure_parent(self.output_path)
 
-        self.workbook = Workbook()
-        self.worksheet = self.workbook.active
-        self.worksheet.title = REPORT_SHEET_NAME
-        self.worksheet.append(REPORT_HEADERS)
-        _apply_layout(self.worksheet)
-        self.worksheet.freeze_panes = "A2"
-        self._row_index = 2
-        self.save()
+        if self.output_path.is_file():
+            self.workbook = load_workbook(self.output_path)
+            self.worksheet = self.workbook[REPORT_SHEET_NAME]
+            self._row_index = self.worksheet.max_row + 1
+        else:
+            self.workbook = Workbook()
+            self.worksheet = self.workbook.active
+            self.worksheet.title = REPORT_SHEET_NAME
+            self.worksheet.append(REPORT_HEADERS)
+            _apply_layout(self.worksheet)
+            self.worksheet.freeze_panes = "A2"
+            self._row_index = 2
+            self.save()
 
     def append_frame(self, frame: FrameInspectionResult) -> None:
         parsed = frame.parsed_result or {}

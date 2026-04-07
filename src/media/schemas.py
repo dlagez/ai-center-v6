@@ -45,3 +45,11 @@ class VideoInspectionResult(BaseModel):
         default=None,
         description="Generated Excel report path when export is enabled.",
     )
+    work_dir: str | None = Field(
+        default=None,
+        description="Per-video working directory under the output root.",
+    )
+    checkpoint_path: str | None = Field(
+        default=None,
+        description="Checkpoint file path for resume support.",
+    )

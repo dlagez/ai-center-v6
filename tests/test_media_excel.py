@@ -42,3 +42,40 @@ def test_excel_report_writer_writes_required_columns(tmp_path) -> None:
     assert worksheet["I2"].value == "否"
     assert worksheet["J2"].value == "示例"
     assert len(worksheet._images) == 1
+
+
+def test_excel_report_writer_reopens_existing_workbook(tmp_path) -> None:
+    writer = ExcelReportWriter(
+        video_path="D:/videos/demo.mp4",
+        interval_seconds=20,
+        output_path=str(tmp_path / "report.xlsx"),
+    )
+    writer.append_frame(
+        FrameInspectionResult(
+            frame_index=0,
+            timestamp_seconds=0,
+            frame_path=None,
+            raw_answer="{}",
+            parsed_result={"是否为管理人员": "否"},
+        )
+    )
+
+    reopened = ExcelReportWriter(
+        video_path="D:/videos/demo.mp4",
+        interval_seconds=20,
+        output_path=str(tmp_path / "report.xlsx"),
+    )
+    reopened.append_frame(
+        FrameInspectionResult(
+            frame_index=1,
+            timestamp_seconds=20,
+            frame_path=None,
+            raw_answer="{}",
+            parsed_result={"是否为管理人员": "是"},
+        )
+    )
+
+    worksheet = load_workbook(reopened.output_path)[REPORT_SHEET_NAME]
+    assert worksheet.max_row == 3
+    assert worksheet["C2"].value == 0
+    assert worksheet["C3"].value == 1

@@ -3,37 +3,11 @@ import json
 from pathlib import Path
 import sys
 
-import requests
-
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-
-def _unique_path(path: Path) -> Path:
-    if not path.exists():
-        return path
-
-    index = 1
-    while True:
-        candidate = path.with_name(f"{path.stem}_{index}{path.suffix}")
-        if not candidate.exists():
-            return candidate
-        index += 1
-
-
-def _default_excel_path(video_path: str) -> str:
-    video = Path(video_path)
-    output_dir = ROOT / "data" / "output"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    return str(_unique_path(output_dir / f"{video.stem}_inspection.xlsx"))
-
-
-def _default_frames_dir(video_path: str) -> str:
-    video = Path(video_path)
-    frames_dir = ROOT / "data" / "output" / "frames" / video.stem
-    frames_dir.mkdir(parents=True, exist_ok=True)
-    return str(frames_dir)
+from src.media.service import VideoInspectionService
 
 
 def _load_prompt(args: argparse.Namespace) -> str | None:
@@ -58,12 +32,12 @@ def main() -> None:
     parser.add_argument(
         "--excel-path",
         default=None,
-        help="Output Excel path. Default: write to a unique file under data/output/",
+        help="Optional output Excel path. Default: <work_dir>/inspection.xlsx",
     )
     parser.add_argument(
         "--frames-dir",
         default=None,
-        help="Optional directory to store extracted frames. Default: data/output/frames/<video_name>",
+        help="Optional directory to store extracted frames. Default: <work_dir>/frames",
     )
     parser.add_argument(
         "--keep-frames",
@@ -91,42 +65,35 @@ def main() -> None:
         default=None,
         help="Optional UTF-8 text file containing a custom prompt.",
     )
-    parser.add_argument("--host", default="127.0.0.1", help="API host.")
-    parser.add_argument("--port", type=int, default=8000, help="API port.")
     args = parser.parse_args()
 
     if args.prompt and args.prompt_file:
         raise SystemExit("Use either --prompt or --prompt-file, not both.")
 
-    excel_path = args.excel_path or _default_excel_path(args.video_path)
-    frames_dir = args.frames_dir or _default_frames_dir(args.video_path)
-    payload = {
-        "video_path": args.video_path,
-        "interval_seconds": args.interval_seconds,
-        "export_excel_path": excel_path,
-        "frames_dir": frames_dir,
-        "keep_frames": args.keep_frames,
-    }
-
     prompt = _load_prompt(args)
-    if prompt:
-        payload["prompt"] = prompt
-    if args.model:
-        payload["model"] = args.model
-    if args.max_tokens is not None:
-        payload["max_tokens"] = args.max_tokens
+    service = VideoInspectionService()
 
-    response = requests.post(
-        f"http://{args.host}:{args.port}/media/video/inspect",
-        json=payload,
-        timeout=600,
-    )
-    response.raise_for_status()
-    result = response.json()
+    def on_progress(current: int, total: int, frame_index: int, resumed: bool) -> None:
+        status = "续跑跳过" if resumed else "已完成"
+        print(f"当前处理到 {current} / {total} 帧 | frame_index={frame_index} | {status}")
 
-    print(f"Excel: {result.get('excel_path') or excel_path}")
+    result = service.inspect_video(
+        video_path=args.video_path,
+        prompt=prompt,
+        interval_seconds=args.interval_seconds,
+        model=args.model,
+        max_tokens=args.max_tokens,
+        frames_dir=args.frames_dir,
+        keep_frames=args.keep_frames,
+        export_excel_path=args.excel_path,
+        progress_callback=on_progress,
+    ).model_dump()
+
+    print(f"Work dir: {result.get('work_dir')}")
+    print(f"Excel: {result.get('excel_path')}")
     print(f"Frames: {result.get('total_frames')}")
     print(f"Frames dir: {result.get('frames_dir')}")
+    print(f"Checkpoint: {result.get('checkpoint_path')}")
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 

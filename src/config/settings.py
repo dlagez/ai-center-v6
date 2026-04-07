@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     llm_timeout: int = 60
     llm_temperature: float = 0.0
     media_ffmpeg_binary: str = "ffmpeg"
-    media_frames_dir: str = "./data/output/frames"
+    media_output_dir: str = "./data/output"
     embedding_model: str = "openai/text-embedding-v3"
     embedding_batch_size: int = 32
     sql_agent_dialect: str = "sqlite"

@@ -38,7 +38,7 @@ def _apply_layout(worksheet) -> None:
         "B": 12,
         "C": 10,
         "D": 12,
-        "E": 18,
+        "E": 34,
         "F": 16,
         "G": 18,
         "H": 16,
@@ -96,15 +96,15 @@ class ExcelReportWriter:
             ]
         )
 
-        self.worksheet.row_dimensions[self._row_index].height = 96
+        self.worksheet.row_dimensions[self._row_index].height = 180
         for column_index in range(1, len(REPORT_HEADERS) + 1):
             cell = self.worksheet.cell(row=self._row_index, column=column_index)
             cell.alignment = Alignment(vertical="top", wrap_text=True)
 
         if frame.frame_path and Path(frame.frame_path).is_file():
             image = XLImage(frame.frame_path)
-            image.width = 120
-            image.height = 90
+            image.width = 240
+            image.height = 135
             self.worksheet.add_image(image, f"E{self._row_index}")
 
         self._row_index += 1

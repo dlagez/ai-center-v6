@@ -13,6 +13,7 @@ if str(ROOT) not in sys.path:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Call the local SQL agent API.")
     parser.add_argument("question", help="Question for the SQL agent.")
+    parser.add_argument("--dialect", default=None, help="Database dialect: sqlite or mysql.")
     parser.add_argument("--db-path", default=None, help="SQLite database file path.")
     parser.add_argument("--max-rows", type=int, default=20, help="Maximum number of rows to read.")
     parser.add_argument("--host", default="127.0.0.1", help="API host.")
@@ -23,6 +24,8 @@ def main() -> None:
         "question": args.question,
         "max_rows": args.max_rows,
     }
+    if args.dialect:
+        payload["dialect"] = args.dialect
     if args.db_path:
         payload["db_path"] = args.db_path
 

@@ -8,12 +8,14 @@ client = TestClient(app)
 
 def test_sql_agent_endpoint_returns_answer(monkeypatch) -> None:
     class _FakeService:
-        def answer(self, question, db_path=None, max_rows=20):
+        def answer(self, question, dialect=None, db_path=None, max_rows=20):
             assert question == "Which region has the highest sales?"
+            assert dialect is None
             assert db_path == "demo.db"
             assert max_rows == 10
             return SqlAgentOutput(
                 question=question,
+                dialect="sqlite",
                 db_path=db_path,
                 sql_query="SELECT region, SUM(amount) AS total_amount FROM sales GROUP BY region",
                 rows=[{"region": "East", "total_amount": 200}],
@@ -38,7 +40,7 @@ def test_sql_agent_endpoint_returns_answer(monkeypatch) -> None:
 
 def test_sql_agent_endpoint_maps_validation_errors(monkeypatch) -> None:
     class _FakeService:
-        def answer(self, question, db_path=None, max_rows=20):
+        def answer(self, question, dialect=None, db_path=None, max_rows=20):
             raise ValueError("Database path must be provided")
 
     monkeypatch.setattr("src.api.routes.SqlAgentService", lambda: _FakeService())

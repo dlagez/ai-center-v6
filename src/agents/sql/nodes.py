@@ -1,7 +1,14 @@
 import json
 from typing import Any
 
-from src.agents.sql.db import get_schema, list_tables, run_query
+from src.agents.sql.db import (
+    get_schema,
+    get_schema_mysql,
+    list_tables,
+    list_tables_mysql,
+    run_query,
+    run_query_mysql,
+)
 from src.agents.sql.prompts import (
     ANSWER_PROMPT,
     QUERY_CHECK_PROMPT,
@@ -39,14 +46,22 @@ def _format_schema(schema: dict[str, str]) -> str:
     return "\n\n".join(f"{name}:\n{ddl}" for name, ddl in schema.items())
 
 
+def _dialect_label(state: SqlAgentState) -> str:
+    return "MySQL" if state.get("dialect") == "mysql" else "SQLite"
+
+
 def list_database_tables(state: SqlAgentState) -> SqlAgentState:
     db_path = state["db_path"]
+    dialect = state.get("dialect", "sqlite")
     with observe(
         name="sql_agent.list_tables",
         as_type="tool",
-        input={"db_path": db_path},
+        input={"db_path": db_path, "dialect": dialect},
     ) as observation:
-        table_names = list_tables(db_path)
+        if dialect == "mysql":
+            table_names = list_tables_mysql(state.get("mysql_config", {}))
+        else:
+            table_names = list_tables(db_path)
         result = {"table_names": table_names}
         if observation is not None:
             observation.update(output=result)
@@ -71,6 +86,7 @@ def select_relevant_tables(state: SqlAgentState) -> SqlAgentState:
                 {
                     "role": "user",
                     "content": (
+                        f"Dialect: {_dialect_label(state)}\n\n"
                         f"Question: {state['question']}\n\n"
                         f"Available tables: {', '.join(table_names)}"
                     ),
@@ -92,9 +108,16 @@ def load_selected_schema(state: SqlAgentState) -> SqlAgentState:
     with observe(
         name="sql_agent.get_schema",
         as_type="tool",
-        input={"db_path": state["db_path"], "selected_tables": selected_tables},
+        input={
+            "db_path": state["db_path"],
+            "dialect": state.get("dialect", "sqlite"),
+            "selected_tables": selected_tables,
+        },
     ) as observation:
-        schema = get_schema(state["db_path"], selected_tables)
+        if state.get("dialect") == "mysql":
+            schema = get_schema_mysql(state.get("mysql_config", {}), selected_tables)
+        else:
+            schema = get_schema(state["db_path"], selected_tables)
         schema_text = _format_schema(schema)
         result = {"schema": schema, "schema_text": schema_text}
         if observation is not None:
@@ -123,6 +146,7 @@ def generate_query(state: SqlAgentState) -> SqlAgentState:
             {
                 "role": "user",
                 "content": (
+                    f"Dialect: {_dialect_label(state)}\n\n"
                     f"Question: {state['question']}\n\n"
                     f"Schema:\n{state.get('schema_text', '')}"
                 ),
@@ -170,6 +194,7 @@ def check_query(state: SqlAgentState) -> SqlAgentState:
                     {
                         "role": "user",
                         "content": (
+                            f"Dialect: {_dialect_label(state)}\n\n"
                             f"Question: {state['question']}\n\n"
                             f"Schema:\n{state.get('schema_text', '')}\n\n"
                             f"Query:\n{state.get('sql_query', '')}"
@@ -198,17 +223,25 @@ def run_sql_query(state: SqlAgentState) -> SqlAgentState:
         as_type="tool",
         input={
             "db_path": state["db_path"],
+            "dialect": state.get("dialect", "sqlite"),
             "sql_query": sql_query,
             "max_rows": state.get("max_rows", 20),
             "retry_count": retry_count,
         },
     ) as observation:
         try:
-            rows = run_query(
-                state["db_path"],
-                sql_query,
-                max_rows=state.get("max_rows", 20),
-            )
+            if state.get("dialect") == "mysql":
+                rows = run_query_mysql(
+                    state.get("mysql_config", {}),
+                    sql_query,
+                    max_rows=state.get("max_rows", 20),
+                )
+            else:
+                rows = run_query(
+                    state["db_path"],
+                    sql_query,
+                    max_rows=state.get("max_rows", 20),
+                )
             result = {
                 "query_result": rows,
                 "query_error": None,
@@ -248,6 +281,7 @@ def generate_answer(state: SqlAgentState) -> SqlAgentState:
                 {
                     "role": "user",
                     "content": (
+                        f"Dialect: {_dialect_label(state)}\n\n"
                         f"Question: {state['question']}\n\n"
                         f"SQL Query:\n{state.get('sql_query', '')}\n\n"
                         f"Query Error: {state.get('query_error')}\n\n"

@@ -17,5 +17,6 @@ class AgenticRagRequest(BaseModel):
 
 class SqlAgentRequest(BaseModel):
     question: str = Field(..., description="User question for the SQL agent.")
+    dialect: str | None = Field(default=None, description="Database dialect: sqlite or mysql.")
     db_path: str | None = Field(default=None, description="SQLite database file path.")
     max_rows: int = Field(default=20, ge=1, le=100, description="Maximum number of rows to read.")

@@ -21,6 +21,7 @@ async def sql_agent_answer(request: SqlAgentRequest) -> dict:
         ):
             result = service.answer(
                 question=request.question,
+                dialect=request.dialect,
                 db_path=request.db_path,
                 max_rows=request.max_rows,
             )

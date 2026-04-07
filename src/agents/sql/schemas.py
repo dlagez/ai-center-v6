@@ -6,6 +6,7 @@ from typing_extensions import TypedDict
 
 class SqlAgentOutput(BaseModel):
     question: str
+    dialect: str
     db_path: str
     sql_query: str = ""
     rows: list[dict[str, Any]] = Field(default_factory=list)
@@ -17,7 +18,9 @@ class SqlAgentOutput(BaseModel):
 
 class SqlAgentState(TypedDict, total=False):
     question: str
+    dialect: str
     db_path: str
+    mysql_config: dict[str, Any]
     max_rows: int
     max_retries: int
     retry_count: int

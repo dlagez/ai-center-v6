@@ -33,9 +33,15 @@ class Settings(BaseSettings):
     llm_temperature: float = 0.0
     embedding_model: str = "openai/text-embedding-v3"
     embedding_batch_size: int = 32
+    sql_agent_dialect: str = "sqlite"
     sql_agent_default_db_path: str | None = None
     sql_agent_max_rows: int = 20
     sql_agent_max_retries: int = 2
+    sql_agent_mysql_host: str | None = None
+    sql_agent_mysql_port: int = 3306
+    sql_agent_mysql_user: str | None = None
+    sql_agent_mysql_password: str | None = None
+    sql_agent_mysql_database: str | None = None
     langfuse_enabled: bool = True
     langfuse_public_key: str | None = None
     langfuse_secret_key: str | None = None

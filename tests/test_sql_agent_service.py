@@ -36,9 +36,9 @@ def test_sql_agent_service_answers_question(monkeypatch, tmp_path: Path) -> None
         system_prompt = messages[0]["content"]
         if "Select the tables" in system_prompt:
             return '{"tables": ["sales"]}'
-        if "Write exactly one read-only SQLite query" in system_prompt:
+        if "Write exactly one read-only query" in system_prompt:
             return "SELECT region, SUM(amount) AS total_amount FROM sales GROUP BY region ORDER BY total_amount DESC"
-        if "reviewing a sqlite query" in system_prompt.lower():
+        if "reviewing a sql query" in system_prompt.lower():
             return "SELECT region, SUM(amount) AS total_amount FROM sales GROUP BY region ORDER BY total_amount DESC"
         if "concise data analyst" in system_prompt:
             return "East has the highest total amount with 200."
@@ -50,6 +50,7 @@ def test_sql_agent_service_answers_question(monkeypatch, tmp_path: Path) -> None
     result = service.answer("Which region has the highest sales?", db_path=db_path, max_rows=10)
 
     assert result.sql_query.startswith("SELECT region")
+    assert result.dialect == "sqlite"
     assert result.rows[0]["region"] == "East"
     assert result.answer == "East has the highest total amount with 200."
     assert result.error is None
@@ -82,6 +83,7 @@ def test_sql_agent_service_creates_missing_db_file(monkeypatch, tmp_path: Path) 
     result = service.answer("Which region has the highest sales?", db_path=db_path, max_rows=10)
 
     assert db_path.exists()
+    assert result.dialect == "sqlite"
     assert result.rows == []
     assert result.sql_query == ""
     assert result.error == "The database has no tables yet. Create tables and load data first."
@@ -95,3 +97,32 @@ def test_ensure_db_file_creates_parent_directories(tmp_path: Path) -> None:
     assert created == db_path
     assert db_path.exists()
     assert db_path.is_file()
+
+
+def test_sql_agent_service_uses_mysql_settings(monkeypatch) -> None:
+    class _FakeGraph:
+        def invoke(self, state):
+            assert state["dialect"] == "mysql"
+            assert state["mysql_config"]["host"] == "test-mysql.hysz.co"
+            assert state["mysql_config"]["database"] == "focusin_hr"
+            return {
+                "sql_query": "SELECT COUNT(*) AS employee_count FROM employees",
+                "query_result": [{"employee_count": 42}],
+                "answer": "There are 42 employees.",
+                "query_error": None,
+            }
+
+    monkeypatch.setattr("src.agents.sql.service.settings.sql_agent_dialect", "mysql")
+    monkeypatch.setattr("src.agents.sql.service.settings.sql_agent_mysql_host", "test-mysql.hysz.co")
+    monkeypatch.setattr("src.agents.sql.service.settings.sql_agent_mysql_port", 3306)
+    monkeypatch.setattr("src.agents.sql.service.settings.sql_agent_mysql_user", "demo_user")
+    monkeypatch.setattr("src.agents.sql.service.settings.sql_agent_mysql_password", "demo_password")
+    monkeypatch.setattr("src.agents.sql.service.settings.sql_agent_mysql_database", "focusin_hr")
+
+    service = SqlAgentService(graph=_FakeGraph())
+    result = service.answer("How many employees are there?")
+
+    assert result.dialect == "mysql"
+    assert result.db_path == "test-mysql.hysz.co:3306/focusin_hr"
+    assert result.rows == [{"employee_count": 42}]
+    assert result.answer == "There are 42 employees."

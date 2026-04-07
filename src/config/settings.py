@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     llm_temperature: float = 0.0
     embedding_model: str = "openai/text-embedding-v3"
     embedding_batch_size: int = 32
+    sql_agent_default_db_path: str | None = None
+    sql_agent_max_rows: int = 20
+    sql_agent_max_retries: int = 2
     langfuse_enabled: bool = True
     langfuse_public_key: str | None = None
     langfuse_secret_key: str | None = None

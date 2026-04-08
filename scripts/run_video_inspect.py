@@ -42,7 +42,14 @@ def main() -> None:
     parser.add_argument(
         "--keep-frames",
         action="store_true",
-        help="Keep extracted frames on disk. Default: false.",
+        default=True,
+        help="Keep extracted frames on disk. Default: true.",
+    )
+    parser.add_argument(
+        "--no-keep-frames",
+        action="store_false",
+        dest="keep_frames",
+        help="Delete extracted frames after processing.",
     )
     parser.add_argument(
         "--model",

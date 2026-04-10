@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     llm_temperature: float = 0.0
     media_ffmpeg_binary: str = "ffmpeg"
     media_output_dir: str = "./data/output"
+    excel_update_output_dir: str = "./data/excel_update"
     embedding_model: str = "openai/text-embedding-v3"
     embedding_batch_size: int = 32
     sql_agent_dialect: str = "sqlite"

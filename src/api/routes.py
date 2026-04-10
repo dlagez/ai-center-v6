@@ -1,4 +1,10 @@
-from fastapi import APIRouter, HTTPException
+import json
+import shutil
+from pathlib import Path
+from uuid import uuid4
+
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 
 from src.agents.sql.service import SqlAgentService
 from src.api.schemas import (
@@ -9,13 +15,44 @@ from src.api.schemas import (
     VideoInspectionRequest,
     VisionChatRequest,
 )
+from src.config.settings import settings
 from src.media.service import VideoInspectionService
 from src.models.llm import vision_completion
 from src.observability import observe
 from src.rag.agentic.service import AgenticRagService
 from src.rag.service import KnowledgeIngestionService, KnowledgeSearchService
+from src.workflow.excel_update.schemas import ExcelUpdateRequest
+from src.workflow.excel_update.task_service import ExcelUpdateTaskService
 
 router = APIRouter()
+
+
+def _parse_json_form_field(value: str | None, field_name: str) -> list[dict]:
+    if not value:
+        return []
+
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"{field_name} must be valid JSON") from exc
+
+    if not isinstance(parsed, list):
+        raise ValueError(f"{field_name} must be a JSON array")
+    return parsed
+
+
+async def _save_uploaded_excel(file: UploadFile) -> tuple[str, str]:
+    original_name = file.filename or "uploaded.xlsx"
+    uploads_dir = Path(settings.excel_update_output_dir).expanduser().resolve() / "_uploads"
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+
+    suffix = Path(original_name).suffix or ".xlsx"
+    saved_path = uploads_dir / f"{uuid4().hex}{suffix}"
+    with saved_path.open("wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    await file.close()
+
+    return str(saved_path), original_name
 
 
 @router.post("/agents/sql")
@@ -149,3 +186,93 @@ async def inspect_video(request: VideoInspectionRequest) -> dict:
         raise HTTPException(status_code=500, detail=f"Video inspection failed: {exc}") from exc
 
     return result.model_dump()
+
+
+@router.post("/workflow/excel-update/tasks")
+async def create_excel_update_task(
+    file: UploadFile = File(...),
+    sheet_name: str | None = Form(default=None),
+    match_key: str = Form(default="project_no"),
+    query_conditions: str | None = Form(default=None),
+    field_mappings: str | None = Form(default=None),
+    overwrite_existing: bool = Form(default=True),
+    operator: str | None = Form(default=None),
+) -> dict:
+    task_service = ExcelUpdateTaskService()
+
+    try:
+        saved_excel_path, original_name = await _save_uploaded_excel(file)
+        request = ExcelUpdateRequest(
+            excel_path=saved_excel_path,
+            sheet_name=sheet_name,
+            match_key=match_key,
+            query_conditions=_parse_json_form_field(query_conditions, "query_conditions"),
+            field_mappings=_parse_json_form_field(field_mappings, "field_mappings"),
+            overwrite_existing=overwrite_existing,
+            operator=operator,
+        )
+        with observe(
+            name="api.excel_update.create_task",
+            as_type="span",
+            input={
+                "file_name": original_name,
+                "sheet_name": sheet_name,
+                "match_key": match_key,
+                "query_conditions": query_conditions,
+                "field_mappings": field_mappings,
+                "overwrite_existing": overwrite_existing,
+                "operator": operator,
+            },
+        ):
+            result = task_service.create_task(request=request, uploaded_file_name=original_name)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Excel update failed: {exc}") from exc
+
+    return result.model_dump()
+
+
+@router.get("/workflow/excel-update/tasks/{task_id}")
+async def get_excel_update_task(task_id: str) -> dict:
+    task_service = ExcelUpdateTaskService()
+
+    try:
+        with observe(
+            name="api.excel_update.get_task",
+            as_type="span",
+            input={"task_id": task_id},
+        ):
+            result = task_service.get_task(task_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Excel update task lookup failed: {exc}") from exc
+
+    return result.model_dump()
+
+
+@router.get("/workflow/excel-update/tasks/{task_id}/file")
+async def download_excel_update_file(task_id: str) -> FileResponse:
+    task_service = ExcelUpdateTaskService()
+
+    try:
+        with observe(
+            name="api.excel_update.download_file",
+            as_type="span",
+            input={"task_id": task_id},
+        ):
+            task = task_service.get_task(task_id)
+            output_path = task_service.get_output_file_path(task_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Excel update file download failed: {exc}") from exc
+
+    return FileResponse(
+        path=output_path,
+        filename=task.output_file_name,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )

@@ -21,6 +21,7 @@ from src.models.llm import vision_completion
 from src.observability import observe
 from src.rag.agentic.service import AgenticRagService
 from src.rag.service import KnowledgeIngestionService, KnowledgeSearchService
+from src.workflow.excel_update.analyzer import analyze_excel_update
 from src.workflow.excel_update.schemas import ExcelUpdateRequest
 from src.workflow.excel_update.task_service import ExcelUpdateTaskService
 
@@ -199,10 +200,11 @@ async def inspect_video(request: VideoInspectionRequest) -> dict:
 @router.post("/workflow/excel-update/tasks")
 async def create_excel_update_task(
     file: UploadFile = File(...),
+    user_prompt: str | None = Form(default=None),
     sheet_name: str | None = Form(default=None),
-    match_column: str = Form(default="项目编号"),
-    match_field: str = Form(default="project_no"),
-    target_column: str = Form(...),
+    match_column: str | None = Form(default=None),
+    match_field: str | None = Form(default=None),
+    target_column: str | None = Form(default=None),
     query_conditions: str | None = Form(default=None),
     overwrite_existing: bool = Form(default=True),
     operator: str | None = Form(default=None),
@@ -211,13 +213,23 @@ async def create_excel_update_task(
 
     try:
         saved_excel_path, original_name = await _save_uploaded_excel(file)
+        parsed_query_conditions = _parse_json_form_field(query_conditions, "query_conditions")
+        analysis = None
+        if user_prompt and (not sheet_name or not match_column or not match_field or not target_column or not parsed_query_conditions):
+            analysis = analyze_excel_update(saved_excel_path, user_prompt)
+
+        resolved_target_column = target_column or (analysis.target_column if analysis else None)
+        if not resolved_target_column:
+            raise ValueError("target_column is required unless it can be inferred from user_prompt")
+
         request = ExcelUpdateRequest(
             excel_path=saved_excel_path,
-            sheet_name=sheet_name,
-            match_column=match_column,
-            match_field=match_field,
-            target_column=target_column,
-            query_conditions=_parse_json_form_field(query_conditions, "query_conditions"),
+            user_prompt=user_prompt,
+            sheet_name=sheet_name or (analysis.sheet_name if analysis else None),
+            match_column=match_column or (analysis.match_column if analysis else "项目编号"),
+            match_field=match_field or (analysis.match_field if analysis else "project_no"),
+            target_column=resolved_target_column,
+            query_conditions=parsed_query_conditions or (analysis.query_conditions if analysis else []),
             overwrite_existing=overwrite_existing,
             operator=operator,
         )
@@ -226,10 +238,11 @@ async def create_excel_update_task(
             as_type="span",
             input={
                 "file_name": original_name,
+                "user_prompt": user_prompt,
                 "sheet_name": sheet_name,
                 "match_column": match_column,
                 "match_field": match_field,
-                "target_column": target_column,
+                "target_column": resolved_target_column,
                 "query_conditions": query_conditions,
                 "overwrite_existing": overwrite_existing,
                 "operator": operator,
@@ -244,6 +257,29 @@ async def create_excel_update_task(
         raise HTTPException(status_code=500, detail=f"Excel update failed: {exc}") from exc
 
     return result.model_dump()
+
+
+@router.post("/workflow/excel-update/analysis")
+async def analyze_excel_update_task(
+    file: UploadFile = File(...),
+    user_prompt: str = Form(...),
+) -> dict:
+    try:
+        saved_excel_path, _ = await _save_uploaded_excel(file)
+        with observe(
+            name="api.excel_update.analysis",
+            as_type="generation",
+            input={"excel_path": saved_excel_path, "user_prompt": user_prompt},
+        ):
+            result = analyze_excel_update(saved_excel_path, user_prompt)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Excel analysis failed: {exc}") from exc
+
+    return result.model_dump(mode="json")
 
 
 @router.get("/workflow/excel-update/tasks/{task_id}")

@@ -10,6 +10,10 @@ class ExcelUpdateQueryCondition(BaseModel):
 
 class ExcelUpdateRequest(BaseModel):
     excel_path: str = Field(..., description="Local Excel file path.")
+    user_prompt: str | None = Field(
+        default=None,
+        description="Natural-language prompt used to infer update parameters.",
+    )
     sheet_name: str | None = Field(default=None, description="Target sheet name.")
     match_column: str = Field(
         default="项目编号",
@@ -97,3 +101,31 @@ class ExcelUpdateTaskResult(BaseModel):
     download_url: str = Field(..., description="API path used to download the output Excel file.")
     detail_url: str = Field(..., description="API path used to fetch task details.")
     result: ExcelUpdateResult = Field(..., description="Structured execution result.")
+
+
+class ExcelSheetAnalysis(BaseModel):
+    sheet_name: str = Field(..., description="Worksheet name.")
+    header_candidates: list[str] = Field(
+        default_factory=list,
+        description="Detected non-empty header texts from the top scan window.",
+    )
+
+
+class ExcelUpdateAnalysisResult(BaseModel):
+    user_prompt: str = Field(..., description="Original natural-language prompt.")
+    sheet_name: str | None = Field(default=None, description="Resolved target sheet name.")
+    match_column: str = Field(..., description="Resolved Excel match column.")
+    match_field: str = Field(..., description="Resolved business match field.")
+    target_column: str | None = Field(default=None, description="Resolved target Excel column.")
+    query_conditions: list[ExcelUpdateQueryCondition] = Field(
+        default_factory=list,
+        description="Structured business query conditions inferred from the prompt.",
+    )
+    sheet_options: list[ExcelSheetAnalysis] = Field(
+        default_factory=list,
+        description="Worksheet summaries used during analysis.",
+    )
+    warnings: list[str] = Field(
+        default_factory=list,
+        description="Non-fatal analysis warnings that may require user confirmation.",
+    )

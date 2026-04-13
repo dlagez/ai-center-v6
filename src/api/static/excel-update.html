@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Excel 批量更新</title>
+  <title>清欠表 AI 填报</title>
   <style>
     :root {
       --bg: #f3efe6;
@@ -300,21 +300,27 @@
 <body>
   <main class="page">
     <section class="hero">
-      <h1>Excel 批量更新工作台</h1>
-      <p>上传一份 Excel，填写 Excel 匹配列、业务匹配字段、查询条件和目标列名。页面会调用后端任务接口执行批量更新，并返回任务摘要与下载入口。</p>
+      <h1>清欠表 AI 填报工作台</h1>
+      <p>先上传 Excel 并输入自然语言指令，让系统识别目标工作表、匹配列、目标列和查询条件；确认结果后，再执行批量写入并下载更新文件。</p>
     </section>
 
     <section class="grid">
       <article class="panel">
         <div class="panel-header">
-          <h2>上传并执行</h2>
-          <p>先跑通“上传 -> 执行 -> 查看摘要 -> 下载结果”闭环。查询条件仍然用 JSON 数组字符串传入，目标列直接输入列名。</p>
+          <h2>识别并执行</h2>
+          <p>流程分两步：先用自然语言识别参数，再确认并执行更新。识别结果会自动回填到下方表单，必要时你也可以手动调整。</p>
         </div>
         <div class="panel-body">
           <form id="excelUpdateForm">
             <div class="field">
               <label for="file">Excel 文件</label>
               <input id="file" name="file" type="file" accept=".xlsx" required>
+            </div>
+
+            <div class="field">
+              <label for="userPrompt">自然语言指令</label>
+              <textarea id="userPrompt" name="user_prompt" spellcheck="false" placeholder="例如：把这张清欠表 3 月实际产值更新一下"></textarea>
+              <div class="hint">识别步骤会根据这段描述推断查询条件、目标 sheet、匹配列和目标列。</div>
             </div>
 
             <div class="field two-col">
@@ -367,7 +373,8 @@
             </div>
 
             <div class="actions">
-              <button id="submitButton" class="primary" type="submit">开始更新</button>
+              <button id="analyzeButton" class="secondary" type="button">先识别参数</button>
+              <button id="submitButton" class="primary" type="submit">确认并执行</button>
               <button id="refreshButton" class="secondary" type="button" disabled>刷新任务详情</button>
             </div>
             <div id="status" class="status"></div>
@@ -378,10 +385,10 @@
       <article class="panel">
         <div class="panel-header">
           <h2>执行结果</h2>
-          <p>提交成功后，这里会展示任务编号、汇总指标、未匹配项、错误信息以及结果文件下载入口。</p>
+          <p>右侧先展示 AI 识别结果，执行成功后再展示任务编号、摘要指标、错误信息和下载入口。</p>
         </div>
         <div class="panel-body" id="resultPanel">
-          <div class="empty">还没有任务结果。先上传文件并执行一次。</div>
+          <div class="empty">还没有识别或任务结果。先上传文件并执行一次参数识别。</div>
         </div>
       </article>
     </section>
@@ -389,12 +396,14 @@
 
   <script>
     const form = document.getElementById("excelUpdateForm");
+    const analyzeButton = document.getElementById("analyzeButton");
     const submitButton = document.getElementById("submitButton");
     const refreshButton = document.getElementById("refreshButton");
     const statusEl = document.getElementById("status");
     const resultPanel = document.getElementById("resultPanel");
 
     let currentTaskId = "";
+    let latestAnalysis = null;
 
     function setStatus(message, isError = false) {
       statusEl.textContent = message || "";
@@ -446,6 +455,40 @@
       `;
     }
 
+    function renderAnalysis(analysis) {
+      const warnings = analysis.warnings || [];
+      const sheetOptions = analysis.sheet_options || [];
+
+      resultPanel.innerHTML = `
+        <div class="result-head">
+          <div>
+            <div class="pill">AI 识别结果</div>
+            <div class="muted" style="margin-top: 10px;">目标 sheet：${analysis.sheet_name || "未识别"}</div>
+            <div class="muted">目标列：${analysis.target_column || "未识别"}</div>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <pre>识别参数:\n${pretty({
+            user_prompt: analysis.user_prompt,
+            sheet_name: analysis.sheet_name,
+            match_column: analysis.match_column,
+            match_field: analysis.match_field,
+            target_column: analysis.target_column,
+            query_conditions: analysis.query_conditions
+          })}</pre>
+        </div>
+
+        <div class="code-block">
+          <pre>工作表与表头预览:\n${pretty(sheetOptions)}</pre>
+        </div>
+
+        <div class="code-block">
+          <pre>识别警告:\n${pretty(warnings)}</pre>
+        </div>
+      `;
+    }
+
     async function requestTaskDetail(taskId) {
       const response = await fetch(`/workflow/excel-update/tasks/${encodeURIComponent(taskId)}`);
       const payload = await response.json().catch(() => ({}));
@@ -454,6 +497,54 @@
       }
       return payload;
     }
+
+    async function requestAnalysis() {
+      const fileInput = document.getElementById("file");
+      if (!fileInput.files || !fileInput.files.length) {
+        throw new Error("请先选择 Excel 文件。");
+      }
+
+      const userPrompt = document.getElementById("userPrompt").value.trim();
+      if (!userPrompt) {
+        throw new Error("请先输入自然语言指令。");
+      }
+
+      const formData = new FormData();
+      formData.append("file", fileInput.files[0]);
+      formData.append("user_prompt", userPrompt);
+
+      const response = await fetch("/workflow/excel-update/analysis", {
+        method: "POST",
+        body: formData
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.detail || "参数识别失败");
+      }
+      return payload;
+    }
+
+    analyzeButton.addEventListener("click", async () => {
+      analyzeButton.disabled = true;
+      submitButton.disabled = true;
+      setStatus("AI 参数识别中...");
+
+      try {
+        latestAnalysis = await requestAnalysis();
+        document.getElementById("sheetName").value = latestAnalysis.sheet_name || "";
+        document.getElementById("matchColumn").value = latestAnalysis.match_column || "项目编号";
+        document.getElementById("matchField").value = latestAnalysis.match_field || "project_no";
+        document.getElementById("targetColumn").value = latestAnalysis.target_column || "";
+        document.getElementById("queryConditions").value = pretty(latestAnalysis.query_conditions || []);
+        renderAnalysis(latestAnalysis);
+        setStatus("识别完成，请确认参数后执行。");
+      } catch (error) {
+        setStatus(error.message || "参数识别失败", true);
+      } finally {
+        analyzeButton.disabled = false;
+        submitButton.disabled = false;
+      }
+    });
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -464,6 +555,14 @@
         return;
       }
 
+      const targetColumn = document.getElementById("targetColumn").value.trim();
+      const userPrompt = document.getElementById("userPrompt").value.trim();
+      if (!targetColumn && !userPrompt) {
+        setStatus("请先识别参数，或至少提供目标列名。", true);
+        return;
+      }
+
+      analyzeButton.disabled = true;
       submitButton.disabled = true;
       refreshButton.disabled = true;
       setStatus("任务提交中...");
@@ -471,10 +570,11 @@
       try {
         const formData = new FormData();
         formData.append("file", fileInput.files[0]);
+        formData.append("user_prompt", userPrompt);
         formData.append("sheet_name", document.getElementById("sheetName").value.trim());
-        formData.append("match_column", document.getElementById("matchColumn").value.trim() || "项目编号");
-        formData.append("match_field", document.getElementById("matchField").value.trim() || "project_no");
-        formData.append("target_column", document.getElementById("targetColumn").value.trim());
+        formData.append("match_column", document.getElementById("matchColumn").value.trim());
+        formData.append("match_field", document.getElementById("matchField").value.trim());
+        formData.append("target_column", targetColumn);
         formData.append("query_conditions", document.getElementById("queryConditions").value.trim());
         formData.append("operator", document.getElementById("operator").value.trim());
         formData.append("overwrite_existing", String(document.getElementById("overwriteExisting").checked));
@@ -495,6 +595,7 @@
       } catch (error) {
         setStatus(error.message || "任务提交失败", true);
       } finally {
+        analyzeButton.disabled = false;
         submitButton.disabled = false;
       }
     });

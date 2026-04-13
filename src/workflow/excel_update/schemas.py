@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -94,15 +95,6 @@ class ExcelUpdateResult(BaseModel):
     )
 
 
-class ExcelUpdateTaskResult(BaseModel):
-    task_id: str = Field(..., description="Unique task identifier.")
-    file_name: str = Field(..., description="Uploaded source file name.")
-    output_file_name: str = Field(..., description="Generated output file name.")
-    download_url: str = Field(..., description="API path used to download the output Excel file.")
-    detail_url: str = Field(..., description="API path used to fetch task details.")
-    result: ExcelUpdateResult = Field(..., description="Structured execution result.")
-
-
 class ExcelSheetAnalysis(BaseModel):
     sheet_name: str = Field(..., description="Worksheet name.")
     header_candidates: list[str] = Field(
@@ -129,3 +121,47 @@ class ExcelUpdateAnalysisResult(BaseModel):
         default_factory=list,
         description="Non-fatal analysis warnings that may require user confirmation.",
     )
+
+
+class ExcelUpdateOperationCreate(BaseModel):
+    user_prompt: str | None = None
+    sheet_name: str | None = None
+    match_column: str | None = None
+    match_field: str | None = None
+    target_column: str | None = None
+    query_conditions: list[ExcelUpdateQueryCondition] = Field(default_factory=list)
+    overwrite_existing: bool = True
+    operator: str | None = None
+
+
+class ExcelUpdateOperationResult(BaseModel):
+    operation_id: str
+    sequence: int
+    created_at: datetime
+    output_file_name: str
+    download_url: str
+    detail_url: str
+    request: ExcelUpdateRequest
+    analysis: ExcelUpdateAnalysisResult | None = None
+    result: ExcelUpdateResult
+
+
+class ExcelUpdateTaskSummary(BaseModel):
+    task_id: str
+    file_name: str
+    created_at: datetime
+    updated_at: datetime
+    operation_count: int = 0
+    latest_target_column: str | None = None
+    latest_output_file_name: str
+    detail_url: str
+    download_url: str
+
+
+class ExcelUpdateTaskDetail(ExcelUpdateTaskSummary):
+    source_excel_path: str
+    current_excel_path: str
+    operations: list[ExcelUpdateOperationResult] = Field(default_factory=list)
+
+
+ExcelUpdateTaskResult = ExcelUpdateTaskDetail

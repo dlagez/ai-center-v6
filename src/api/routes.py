@@ -22,7 +22,7 @@ from src.observability import observe
 from src.rag.agentic.service import AgenticRagService
 from src.rag.service import KnowledgeIngestionService, KnowledgeSearchService
 from src.workflow.excel_update.analyzer import analyze_excel_update
-from src.workflow.excel_update.schemas import ExcelUpdateRequest
+from src.workflow.excel_update.schemas import ExcelUpdateOperationCreate
 from src.workflow.excel_update.task_service import ExcelUpdateTaskService
 
 router = APIRouter()
@@ -61,6 +61,14 @@ async def excel_update_page() -> FileResponse:
     page_path = Path(__file__).resolve().parent / "static" / "excel-update.html"
     if not page_path.is_file():
         raise HTTPException(status_code=404, detail="Excel update page not found")
+    return FileResponse(path=page_path, media_type="text/html; charset=utf-8")
+
+
+@router.get("/pages/excel-update/tasks")
+async def excel_update_task_list_page() -> FileResponse:
+    page_path = Path(__file__).resolve().parent / "static" / "excel-update-tasks.html"
+    if not page_path.is_file():
+        raise HTTPException(status_code=404, detail="Excel update task list page not found")
     return FileResponse(path=page_path, media_type="text/html; charset=utf-8")
 
 
@@ -198,8 +206,50 @@ async def inspect_video(request: VideoInspectionRequest) -> dict:
 
 
 @router.post("/workflow/excel-update/tasks")
-async def create_excel_update_task(
-    file: UploadFile = File(...),
+async def create_excel_update_task(file: UploadFile = File(...)) -> dict:
+    task_service = ExcelUpdateTaskService()
+
+    try:
+        saved_excel_path, original_name = await _save_uploaded_excel(file)
+        with observe(
+            name="api.excel_update.create_task",
+            as_type="span",
+            input={"file_name": original_name},
+        ):
+            result = task_service.create_task(
+                source_excel_path=saved_excel_path,
+                uploaded_file_name=original_name,
+            )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Excel update failed: {exc}") from exc
+
+    return result.model_dump(mode="json")
+
+
+@router.get("/workflow/excel-update/tasks")
+async def list_excel_update_tasks() -> list[dict]:
+    task_service = ExcelUpdateTaskService()
+
+    try:
+        with observe(
+            name="api.excel_update.list_tasks",
+            as_type="span",
+            input={},
+        ):
+            result = task_service.list_tasks()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Excel update task list failed: {exc}") from exc
+
+    return [item.model_dump(mode="json") for item in result]
+
+
+@router.post("/workflow/excel-update/tasks/{task_id}/operations")
+async def create_excel_update_operation(
+    task_id: str,
     user_prompt: str | None = Form(default=None),
     sheet_name: str | None = Form(default=None),
     match_column: str | None = Form(default=None),
@@ -212,51 +262,41 @@ async def create_excel_update_task(
     task_service = ExcelUpdateTaskService()
 
     try:
-        saved_excel_path, original_name = await _save_uploaded_excel(file)
         parsed_query_conditions = _parse_json_form_field(query_conditions, "query_conditions")
-        analysis = None
-        if user_prompt and (not sheet_name or not match_column or not match_field or not target_column or not parsed_query_conditions):
-            analysis = analyze_excel_update(saved_excel_path, user_prompt)
-
-        resolved_target_column = target_column or (analysis.target_column if analysis else None)
-        if not resolved_target_column:
-            raise ValueError("target_column is required unless it can be inferred from user_prompt")
-
-        request = ExcelUpdateRequest(
-            excel_path=saved_excel_path,
+        operation = ExcelUpdateOperationCreate(
             user_prompt=user_prompt,
-            sheet_name=sheet_name or (analysis.sheet_name if analysis else None),
-            match_column=match_column or (analysis.match_column if analysis else "项目编号"),
-            match_field=match_field or (analysis.match_field if analysis else "project_no"),
-            target_column=resolved_target_column,
-            query_conditions=parsed_query_conditions or (analysis.query_conditions if analysis else []),
+            sheet_name=sheet_name,
+            match_column=match_column,
+            match_field=match_field,
+            target_column=target_column,
+            query_conditions=parsed_query_conditions,
             overwrite_existing=overwrite_existing,
             operator=operator,
         )
         with observe(
-            name="api.excel_update.create_task",
+            name="api.excel_update.create_operation",
             as_type="span",
             input={
-                "file_name": original_name,
+                "task_id": task_id,
                 "user_prompt": user_prompt,
                 "sheet_name": sheet_name,
                 "match_column": match_column,
                 "match_field": match_field,
-                "target_column": resolved_target_column,
+                "target_column": target_column,
                 "query_conditions": query_conditions,
                 "overwrite_existing": overwrite_existing,
                 "operator": operator,
             },
         ):
-            result = task_service.create_task(request=request, uploaded_file_name=original_name)
+            result = task_service.run_operation(task_id=task_id, operation=operation)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Excel update failed: {exc}") from exc
+        raise HTTPException(status_code=500, detail=f"Excel update operation failed: {exc}") from exc
 
-    return result.model_dump()
+    return result.model_dump(mode="json")
 
 
 @router.post("/workflow/excel-update/analysis")
@@ -298,7 +338,7 @@ async def get_excel_update_task(task_id: str) -> dict:
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Excel update task lookup failed: {exc}") from exc
 
-    return result.model_dump()
+    return result.model_dump(mode="json")
 
 
 @router.get("/workflow/excel-update/tasks/{task_id}/file")
@@ -320,6 +360,33 @@ async def download_excel_update_file(task_id: str) -> FileResponse:
 
     return FileResponse(
         path=output_path,
-        filename=task.output_file_name,
+        filename=task.latest_output_file_name,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+@router.get("/workflow/excel-update/tasks/{task_id}/operations/{operation_id}/file")
+async def download_excel_update_operation_file(task_id: str, operation_id: str) -> FileResponse:
+    task_service = ExcelUpdateTaskService()
+
+    try:
+        with observe(
+            name="api.excel_update.download_operation_file",
+            as_type="span",
+            input={"task_id": task_id, "operation_id": operation_id},
+        ):
+            task = task_service.get_task(task_id)
+            operation = next((item for item in task.operations if item.operation_id == operation_id), None)
+            if operation is None:
+                raise FileNotFoundError(f"Excel update operation not found: {operation_id}")
+            output_path = task_service.get_operation_output_file_path(task_id, operation_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Excel update operation file download failed: {exc}") from exc
+
+    return FileResponse(
+        path=output_path,
+        filename=operation.output_file_name,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )

@@ -55,6 +55,14 @@ async def _save_uploaded_excel(file: UploadFile) -> tuple[str, str]:
     return str(saved_path), original_name
 
 
+@router.get("/pages/excel-update")
+async def excel_update_page() -> FileResponse:
+    page_path = Path(__file__).resolve().parent / "static" / "excel-update.html"
+    if not page_path.is_file():
+        raise HTTPException(status_code=404, detail="Excel update page not found")
+    return FileResponse(path=page_path, media_type="text/html; charset=utf-8")
+
+
 @router.post("/agents/sql")
 async def sql_agent_answer(request: SqlAgentRequest) -> dict:
     service = SqlAgentService()
@@ -192,9 +200,10 @@ async def inspect_video(request: VideoInspectionRequest) -> dict:
 async def create_excel_update_task(
     file: UploadFile = File(...),
     sheet_name: str | None = Form(default=None),
-    match_key: str = Form(default="project_no"),
+    match_column: str = Form(default="项目编号"),
+    match_field: str = Form(default="project_no"),
+    target_column: str = Form(...),
     query_conditions: str | None = Form(default=None),
-    field_mappings: str | None = Form(default=None),
     overwrite_existing: bool = Form(default=True),
     operator: str | None = Form(default=None),
 ) -> dict:
@@ -205,9 +214,10 @@ async def create_excel_update_task(
         request = ExcelUpdateRequest(
             excel_path=saved_excel_path,
             sheet_name=sheet_name,
-            match_key=match_key,
+            match_column=match_column,
+            match_field=match_field,
+            target_column=target_column,
             query_conditions=_parse_json_form_field(query_conditions, "query_conditions"),
-            field_mappings=_parse_json_form_field(field_mappings, "field_mappings"),
             overwrite_existing=overwrite_existing,
             operator=operator,
         )
@@ -217,9 +227,10 @@ async def create_excel_update_task(
             input={
                 "file_name": original_name,
                 "sheet_name": sheet_name,
-                "match_key": match_key,
+                "match_column": match_column,
+                "match_field": match_field,
+                "target_column": target_column,
                 "query_conditions": query_conditions,
-                "field_mappings": field_mappings,
                 "overwrite_existing": overwrite_existing,
                 "operator": operator,
             },

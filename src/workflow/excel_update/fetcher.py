@@ -19,4 +19,13 @@ def fetch_business_records(request: ExcelUpdateRequest) -> list[dict[str, Any]]:
     into ExcelUpdateService for integration tests and runtime wiring.
     """
     _ = build_query_dict(request.query_conditions)
-    return []
+    return [
+        {
+            "project_no": "HKZC-N-YW-2021-001",
+            "value": 20,
+        },
+        {
+            "project_no": "HKZC-N-YW-2021-002",
+            "value": 30,
+        },
+    ]

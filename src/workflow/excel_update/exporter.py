@@ -1,4 +1,3 @@
-import shutil
 from pathlib import Path
 
 from src.workflow.excel_update.schemas import ExcelUpdateRequest
@@ -14,9 +13,13 @@ def resolve_output_path(request: ExcelUpdateRequest) -> str:
     return f"{request.excel_path}_updated"
 
 
-def export_updated_workbook(request: ExcelUpdateRequest, output_path: str) -> str:
-    source = Path(request.excel_path)
+def export_updated_workbook(
+    request: ExcelUpdateRequest,
+    parsed_template: dict,
+    output_path: str,
+) -> str:
+    workbook = parsed_template["workbook"]
     target = Path(output_path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(source, target)
+    workbook.save(target)
     return str(target)

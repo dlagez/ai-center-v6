@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Excel 批量更新</title>
+  <style>
+    :root {
+      --bg: #f3efe6;
+      --panel: #fffaf0;
+      --panel-strong: #f8f1e2;
+      --text: #1e1b16;
+      --muted: #6a6258;
+      --accent: #156f5c;
+      --accent-strong: #0d5244;
+      --border: #d9cfbd;
+      --danger: #a93c32;
+      --shadow: 0 18px 40px rgba(71, 54, 29, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(21, 111, 92, 0.14), transparent 32%),
+        radial-gradient(circle at top right, rgba(207, 123, 46, 0.14), transparent 24%),
+        linear-gradient(180deg, #f8f4ea 0%, var(--bg) 100%);
+      min-height: 100vh;
+    }
+
+    .page {
+      width: min(1120px, calc(100% - 32px));
+      margin: 28px auto 48px;
+    }
+
+    .hero {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 24px;
+      padding: 28px;
+      background: linear-gradient(135deg, rgba(21, 111, 92, 0.95), rgba(13, 82, 68, 0.95));
+      color: #f7f5ef;
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 42px);
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 760px;
+      color: rgba(247, 245, 239, 0.84);
+      line-height: 1.6;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.25fr 0.95fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 20px 22px 14px;
+      background: linear-gradient(180deg, rgba(248, 241, 226, 0.9), rgba(255, 250, 240, 0.5));
+      border-bottom: 1px solid rgba(217, 207, 189, 0.8);
+    }
+
+    .panel-header h2 {
+      margin: 0 0 6px;
+      font-size: 18px;
+    }
+
+    .panel-header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .panel-body {
+      padding: 20px 22px 22px;
+    }
+
+    form {
+      display: grid;
+      gap: 16px;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+    }
+
+    .field.two-col {
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    label {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    input[type="text"],
+    textarea,
+    input[type="file"] {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      background: #fffdf8;
+      color: var(--text);
+      font: inherit;
+    }
+
+    input[type="file"] {
+      padding: 10px 12px;
+      background: var(--panel-strong);
+    }
+
+    textarea {
+      min-height: 132px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: var(--panel-strong);
+      border: 1px solid rgba(217, 207, 189, 0.9);
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button,
+    .download-link {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform 120ms ease, opacity 120ms ease, background 120ms ease;
+    }
+
+    button:hover,
+    .download-link:hover {
+      transform: translateY(-1px);
+    }
+
+    button.primary,
+    .download-link {
+      background: var(--accent);
+      color: #f8f7f2;
+    }
+
+    button.secondary {
+      background: #efe5d4;
+      color: var(--text);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .status {
+      min-height: 24px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .status.error {
+      color: var(--danger);
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric {
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: var(--panel-strong);
+      border: 1px solid rgba(217, 207, 189, 0.9);
+    }
+
+    .metric .label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .metric .value {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .code-block,
+    .list-block {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: #fffdf8;
+      border: 1px solid rgba(217, 207, 189, 0.9);
+    }
+
+    .code-block pre,
+    .list-block pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .result-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: #e8f2ef;
+      color: var(--accent-strong);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .empty {
+      color: var(--muted);
+      font-size: 14px;
+      padding: 18px;
+      border-radius: 18px;
+      background: var(--panel-strong);
+      border: 1px dashed var(--border);
+    }
+
+    @media (max-width: 920px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .field.two-col {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <h1>Excel 批量更新工作台</h1>
+      <p>上传一份 Excel，填写 Excel 匹配列、业务匹配字段、查询条件和目标列名。页面会调用后端任务接口执行批量更新，并返回任务摘要与下载入口。</p>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <div class="panel-header">
+          <h2>上传并执行</h2>
+          <p>先跑通“上传 -> 执行 -> 查看摘要 -> 下载结果”闭环。查询条件仍然用 JSON 数组字符串传入，目标列直接输入列名。</p>
+        </div>
+        <div class="panel-body">
+          <form id="excelUpdateForm">
+            <div class="field">
+              <label for="file">Excel 文件</label>
+              <input id="file" name="file" type="file" accept=".xlsx" required>
+            </div>
+
+            <div class="field two-col">
+              <div class="field">
+                <label for="sheetName">工作表名称</label>
+                <input id="sheetName" name="sheet_name" type="text" placeholder="例如：清欠表">
+              </div>
+              <div class="field">
+                <label for="targetColumn">目标列名</label>
+                <input id="targetColumn" name="target_column" type="text" value="3月实际产值">
+              </div>
+            </div>
+
+            <div class="field two-col">
+              <div class="field">
+                <label for="matchColumn">Excel 匹配列</label>
+                <input id="matchColumn" name="match_column" type="text" value="项目编号">
+              </div>
+              <div class="field">
+                <label for="matchField">业务匹配字段</label>
+                <input id="matchField" name="match_field" type="text" value="project_no">
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="queryConditions">查询条件 JSON</label>
+              <textarea id="queryConditions" name="query_conditions" spellcheck="false">[
+  { "key": "month", "value": "2026-03" },
+  { "key": "metric", "value": "actual_output" }
+]</textarea>
+              <div class="hint">格式必须是 JSON 数组，每一项至少包含 `key` 和 `value`。</div>
+            </div>
+
+            <div class="field">
+              <div class="hint">`match_column` 对应 Excel 里的列头名称，`match_field` 对应业务数据里的字段名。</div>
+            </div>
+
+            <div class="field two-col">
+              <div class="field">
+                <label for="operator">操作人</label>
+                <input id="operator" name="operator" type="text" placeholder="例如：zhangsan">
+              </div>
+              <div class="field">
+                <label>&nbsp;</label>
+                <div class="checkbox-row">
+                  <input id="overwriteExisting" name="overwrite_existing" type="checkbox" checked>
+                  <label for="overwriteExisting">允许覆盖已有值</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button id="submitButton" class="primary" type="submit">开始更新</button>
+              <button id="refreshButton" class="secondary" type="button" disabled>刷新任务详情</button>
+            </div>
+            <div id="status" class="status"></div>
+          </form>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
+          <h2>执行结果</h2>
+          <p>提交成功后，这里会展示任务编号、汇总指标、未匹配项、错误信息以及结果文件下载入口。</p>
+        </div>
+        <div class="panel-body" id="resultPanel">
+          <div class="empty">还没有任务结果。先上传文件并执行一次。</div>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById("excelUpdateForm");
+    const submitButton = document.getElementById("submitButton");
+    const refreshButton = document.getElementById("refreshButton");
+    const statusEl = document.getElementById("status");
+    const resultPanel = document.getElementById("resultPanel");
+
+    let currentTaskId = "";
+
+    function setStatus(message, isError = false) {
+      statusEl.textContent = message || "";
+      statusEl.classList.toggle("error", Boolean(isError));
+    }
+
+    function pretty(value) {
+      return JSON.stringify(value, null, 2);
+    }
+
+    function renderTask(task) {
+      const summary = task.result?.summary || {};
+      const unmatched = task.result?.unmatched_keys || [];
+      const errors = task.result?.errors || [];
+      const changes = task.result?.changes || [];
+
+      resultPanel.innerHTML = `
+        <div class="result-head">
+          <div>
+            <div class="pill">任务 ${task.task_id}</div>
+            <div class="muted" style="margin-top: 10px;">源文件：${task.file_name}</div>
+            <div class="muted">结果文件：${task.output_file_name}</div>
+          </div>
+          <a class="download-link" href="${task.download_url}" target="_blank" rel="noreferrer">下载结果文件</a>
+        </div>
+
+        <div class="metric-grid">
+          <div class="metric"><div class="label">总记录数</div><div class="value">${summary.total_records ?? 0}</div></div>
+          <div class="metric"><div class="label">匹配记录数</div><div class="value">${summary.matched_records ?? 0}</div></div>
+          <div class="metric"><div class="label">更新单元格数</div><div class="value">${summary.updated_cells ?? 0}</div></div>
+          <div class="metric"><div class="label">错误数</div><div class="value">${summary.error_count ?? 0}</div></div>
+        </div>
+
+        <div class="list-block">
+          <pre>详情接口：${task.detail_url}</pre>
+        </div>
+
+        <div class="code-block">
+          <pre>未匹配项目:\n${pretty(unmatched)}</pre>
+        </div>
+
+        <div class="code-block">
+          <pre>错误信息:\n${pretty(errors)}</pre>
+        </div>
+
+        <div class="code-block">
+          <pre>变更记录:\n${pretty(changes)}</pre>
+        </div>
+      `;
+    }
+
+    async function requestTaskDetail(taskId) {
+      const response = await fetch(`/workflow/excel-update/tasks/${encodeURIComponent(taskId)}`);
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.detail || "获取任务详情失败");
+      }
+      return payload;
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const fileInput = document.getElementById("file");
+      if (!fileInput.files || !fileInput.files.length) {
+        setStatus("请先选择 Excel 文件。", true);
+        return;
+      }
+
+      submitButton.disabled = true;
+      refreshButton.disabled = true;
+      setStatus("任务提交中...");
+
+      try {
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+        formData.append("sheet_name", document.getElementById("sheetName").value.trim());
+        formData.append("match_column", document.getElementById("matchColumn").value.trim() || "项目编号");
+        formData.append("match_field", document.getElementById("matchField").value.trim() || "project_no");
+        formData.append("target_column", document.getElementById("targetColumn").value.trim());
+        formData.append("query_conditions", document.getElementById("queryConditions").value.trim());
+        formData.append("operator", document.getElementById("operator").value.trim());
+        formData.append("overwrite_existing", String(document.getElementById("overwriteExisting").checked));
+
+        const response = await fetch("/workflow/excel-update/tasks", {
+          method: "POST",
+          body: formData
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload.detail || "任务提交失败");
+        }
+
+        currentTaskId = payload.task_id;
+        refreshButton.disabled = false;
+        renderTask(payload);
+        setStatus(`任务已完成：${payload.task_id}`);
+      } catch (error) {
+        setStatus(error.message || "任务提交失败", true);
+      } finally {
+        submitButton.disabled = false;
+      }
+    });
+
+    refreshButton.addEventListener("click", async () => {
+      if (!currentTaskId) {
+        setStatus("当前没有可刷新的任务。", true);
+        return;
+      }
+
+      refreshButton.disabled = true;
+      setStatus(`刷新任务 ${currentTaskId} 中...`);
+
+      try {
+        const task = await requestTaskDetail(currentTaskId);
+        renderTask(task);
+        setStatus(`任务详情已刷新：${currentTaskId}`);
+      } catch (error) {
+        setStatus(error.message || "刷新任务失败", true);
+      } finally {
+        refreshButton.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

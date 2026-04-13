@@ -8,28 +8,24 @@ class ExcelUpdateQueryCondition(BaseModel):
     value: Any = Field(..., description="Query condition value.")
 
 
-class ExcelUpdateFieldMapping(BaseModel):
-    source_field: str = Field(..., description="Field name from the business system record.")
-    target_column: str | None = Field(
-        default=None,
-        description="Explicit Excel column header to write into when already known.",
-    )
-
-
 class ExcelUpdateRequest(BaseModel):
     excel_path: str = Field(..., description="Local Excel file path.")
     sheet_name: str | None = Field(default=None, description="Target sheet name.")
-    match_key: str = Field(
+    match_column: str = Field(
+        default="项目编号",
+        description="Excel column header used to locate project rows.",
+    )
+    match_field: str = Field(
         default="project_no",
-        description="Business key used to match records with Excel rows.",
+        description="Business record field used to match the Excel project column.",
     )
     query_conditions: list[ExcelUpdateQueryCondition] = Field(
         default_factory=list,
         description="Conditions used when fetching records from the business system.",
     )
-    field_mappings: list[ExcelUpdateFieldMapping] = Field(
-        default_factory=list,
-        description="Source-to-target field mappings for Excel updates.",
+    target_column: str = Field(
+        ...,
+        description="Excel target column header that receives the business value.",
     )
     output_path: str | None = Field(
         default=None,
@@ -70,7 +66,8 @@ class ExcelUpdateResult(BaseModel):
     excel_path: str = Field(..., description="Original Excel file path.")
     output_path: str | None = Field(default=None, description="Updated Excel file path when produced.")
     sheet_name: str | None = Field(default=None, description="Resolved target sheet name.")
-    match_key: str = Field(..., description="Business key used for matching.")
+    match_column: str = Field(..., description="Excel column header used for matching.")
+    match_field: str = Field(..., description="Business record field used for matching.")
     records: list[dict[str, Any]] = Field(
         default_factory=list,
         description="Fetched business records used in this run.",

@@ -56,6 +56,12 @@ async def _save_uploaded_excel(file: UploadFile) -> tuple[str, str]:
     return str(saved_path), original_name
 
 
+async def _save_optional_uploaded_excel(file: UploadFile | None) -> tuple[str | None, str | None]:
+    if file is None:
+        return None, None
+    return await _save_uploaded_excel(file)
+
+
 @router.get("/pages/excel-update")
 async def excel_update_page() -> FileResponse:
     page_path = Path(__file__).resolve().parent / "static" / "excel-update.html"
@@ -250,10 +256,14 @@ async def list_excel_update_tasks() -> list[dict]:
 @router.post("/workflow/excel-update/tasks/{task_id}/operations")
 async def create_excel_update_operation(
     task_id: str,
+    source_type: str = Form(default="pm_api"),
+    source_file: UploadFile | None = File(default=None),
     user_prompt: str | None = Form(default=None),
     sheet_name: str | None = Form(default=None),
     match_column: str | None = Form(default=None),
     match_field: str | None = Form(default=None),
+    source_sheet_name: str | None = Form(default=None),
+    source_value_column: str | None = Form(default=None),
     target_column: str | None = Form(default=None),
     query_conditions: str | None = Form(default=None),
     overwrite_existing: bool = Form(default=True),
@@ -263,11 +273,16 @@ async def create_excel_update_operation(
 
     try:
         parsed_query_conditions = _parse_json_form_field(query_conditions, "query_conditions")
+        source_excel_path, _ = await _save_optional_uploaded_excel(source_file)
         operation = ExcelUpdateOperationCreate(
+            source_type=source_type,
             user_prompt=user_prompt,
             sheet_name=sheet_name,
             match_column=match_column,
             match_field=match_field,
+            source_excel_path=source_excel_path,
+            source_sheet_name=source_sheet_name,
+            source_value_column=source_value_column,
             target_column=target_column,
             query_conditions=parsed_query_conditions,
             overwrite_existing=overwrite_existing,
@@ -278,10 +293,13 @@ async def create_excel_update_operation(
             as_type="span",
             input={
                 "task_id": task_id,
+                "source_type": source_type,
                 "user_prompt": user_prompt,
                 "sheet_name": sheet_name,
                 "match_column": match_column,
                 "match_field": match_field,
+                "source_sheet_name": source_sheet_name,
+                "source_value_column": source_value_column,
                 "target_column": target_column,
                 "query_conditions": query_conditions,
                 "overwrite_existing": overwrite_existing,

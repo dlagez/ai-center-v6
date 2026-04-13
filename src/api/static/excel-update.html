@@ -139,9 +139,37 @@
     .panel-body { padding: 20px 22px 22px; }
     form { display: grid; gap: 16px; }
     .field { display: grid; gap: 8px; }
+    .prompt-shortcuts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .prompt-chip {
+      border: 1px solid rgba(13, 107, 90, 0.22);
+      border-radius: 14px;
+      padding: 10px 12px;
+      background: #eef7f3;
+      color: var(--accent-2);
+      font-size: 13px;
+      line-height: 1.45;
+      cursor: pointer;
+      text-align: left;
+    }
+    .prompt-chip:hover {
+      background: #e4f2ed;
+    }
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     label { font-size: 14px; font-weight: 600; }
     input[type="text"], textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fffdf9;
+      color: var(--text);
+      font: inherit;
+    }
+    input[type="file"], select {
       width: 100%;
       padding: 12px 14px;
       border: 1px solid var(--line);
@@ -254,6 +282,23 @@
       font-size: 12px;
       line-height: 1.55;
     }
+    .scroll-pre {
+      max-height: 240px;
+      overflow: auto;
+      padding-right: 6px;
+    }
+    .scroll-pre::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    .scroll-pre::-webkit-scrollbar-thumb {
+      background: rgba(118, 107, 97, 0.35);
+      border-radius: 999px;
+    }
+    .scroll-pre::-webkit-scrollbar-track {
+      background: rgba(215, 202, 183, 0.2);
+      border-radius: 999px;
+    }
     .meta-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -322,8 +367,23 @@
             <input id="taskIdDisplay" type="text" readonly>
           </div>
           <div class="field">
+            <label for="sourceType">数据来源</label>
+            <select id="sourceType">
+              <option value="pm_api">PM/API 获取数据</option>
+              <option value="excel_file">源 Excel 获取数据</option>
+            </select>
+          </div>
+          <div id="sourceFileField" class="field" style="display:none;">
+            <label for="sourceFile">源 Excel 文件</label>
+            <input id="sourceFile" type="file" accept=".xlsx">
+          </div>
+          <div class="field">
             <label for="userPrompt">操作描述</label>
             <textarea id="userPrompt" spellcheck="false" placeholder="例如：把这张表 3 月实际产值更新一下；下一次可以再填 3 月回款。"></textarea>
+            <div class="prompt-shortcuts">
+              <button class="prompt-chip" type="button" data-prompt="使用源excel的项目编号、回款金额，来更新清欠表的三月回款。">使用源excel的项目编号、回款金额，来更新清欠表的三月回款。</button>
+              <button class="prompt-chip" type="button" data-prompt="调用pm api接口或者3月实际产值数据，把这张表3月实际产值更新一下。">调用pm api接口或者3月实际产值数据，把这张表3月实际产值更新一下。</button>
+            </div>
           </div>
           <div class="actions">
             <button id="runOperationButton" class="primary" type="submit">执行当前操作</button>
@@ -363,6 +423,9 @@
     const detailPanel = document.getElementById("detailPanel");
     const statusEl = document.getElementById("status");
     const floatingLogEl = document.getElementById("floatingLog");
+    const userPromptEl = document.getElementById("userPrompt");
+    const sourceTypeEl = document.getElementById("sourceType");
+    const sourceFileFieldEl = document.getElementById("sourceFileField");
     const refreshDetailButton = document.getElementById("refreshDetailButton");
     const runOperationButton = document.getElementById("runOperationButton");
     document.getElementById("taskIdDisplay").value = taskId;
@@ -390,10 +453,15 @@
     function showRecognitionLog(operation) {
       const sheetName = operation.analysis?.sheet_name || operation.request?.sheet_name || "未识别";
       const targetColumn = operation.analysis?.target_column || operation.request?.target_column || "未识别";
+      const sourceType = operation.request?.source_type === "excel_file" ? "源 Excel" : "PM/API";
+      const sourceMatchColumn = operation.analysis?.source_match_column || operation.request?.source_match_column || "未识别";
+      const sourceValueColumn = operation.analysis?.source_value_column || operation.request?.source_value_column || "未识别";
       floatingLogEl.innerHTML = `
         <h3>识别结果</h3>
+        <p>数据来源：${sourceType}</p>
         <p>sheet页：${sheetName}</p>
         <p>目标列名：${targetColumn}</p>
+        ${operation.request?.source_type === "excel_file" ? `<p>源列：${sourceMatchColumn} / ${sourceValueColumn}</p>` : ""}
       `;
       floatingLogEl.classList.add("visible");
       if (floatingLogTimer) {
@@ -427,8 +495,10 @@
               </div>
 
               <div class="summary-line">
+                <span class="summary-pill">来源：${op.request?.source_type === "excel_file" ? "源 Excel" : "PM/API"}</span>
                 <span class="summary-pill">sheet页：${toText(op.analysis?.sheet_name || op.request?.sheet_name)}</span>
                 <span class="summary-pill">目标列：${toText(op.request?.target_column)}</span>
+                ${op.request?.source_type === "excel_file" ? `<span class="summary-pill">源列：${toText(op.analysis?.source_match_column || op.request?.source_match_column)} / ${toText(op.analysis?.source_value_column || op.request?.source_value_column)}</span>` : ""}
                 <span class="summary-pill">更新单元格：${op.result?.summary?.updated_cells ?? 0}</span>
                 <span class="summary-pill">匹配记录：${op.result?.summary?.matched_records ?? 0}</span>
                 <span class="summary-pill">错误数：${op.result?.summary?.error_count ?? 0}</span>
@@ -439,6 +509,11 @@
                   <h4>操作记录</h4>
                   <pre>${pretty({
                     operation_id: op.operation_id,
+                    source_type: op.request?.source_type,
+                    source_excel_path: op.request?.source_excel_path,
+                    recognized_source_sheet_name: op.analysis?.source_sheet_name || op.request?.source_sheet_name,
+                    recognized_source_match_column: op.analysis?.source_match_column || op.request?.source_match_column,
+                    recognized_source_value_column: op.analysis?.source_value_column || op.request?.source_value_column,
                     user_prompt: op.request?.user_prompt,
                     recognized_sheet_name: op.analysis?.sheet_name || op.request?.sheet_name,
                     recognized_target_column: op.analysis?.target_column || op.request?.target_column,
@@ -448,23 +523,8 @@
                   })}</pre>
                 </div>
                 <div class="block">
-                  <h4>本次产物</h4>
-                  <pre>${pretty({
-                    output_file_name: op.output_file_name,
-                    download_url: op.download_url,
-                    output_path: op.result?.output_path
-                  })}</pre>
-                </div>
-                <div class="block">
                   <h4>变更记录</h4>
-                  <pre>${pretty(op.result?.changes || [])}</pre>
-                </div>
-                <div class="block">
-                  <h4>错误与未匹配</h4>
-                  <pre>${pretty({
-                    errors: op.result?.errors || [],
-                    unmatched_keys: op.result?.unmatched_keys || []
-                  })}</pre>
+                  <pre class="scroll-pre">${pretty(op.result?.changes || [])}</pre>
                 </div>
               </div>
             </article>
@@ -529,6 +589,10 @@
       renderDetail(payload);
     }
 
+    function syncSourceFields() {
+      sourceFileFieldEl.style.display = sourceTypeEl.value === "excel_file" ? "grid" : "none";
+    }
+
     operationForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       if (!taskId) {
@@ -540,6 +604,14 @@
       setStatus("正在执行更新操作...");
       try {
         const formData = new FormData();
+        formData.append("source_type", sourceTypeEl.value);
+        if (sourceTypeEl.value === "excel_file") {
+          const sourceFile = document.getElementById("sourceFile").files?.[0];
+          if (!sourceFile) {
+            throw new Error("请选择源 Excel 文件");
+          }
+          formData.append("source_file", sourceFile);
+        }
         formData.append("user_prompt", document.getElementById("userPrompt").value.trim());
 
         const response = await fetch(`/workflow/excel-update/tasks/${encodeURIComponent(taskId)}/operations`, {
@@ -573,6 +645,15 @@
         refreshDetailButton.disabled = false;
       }
     });
+
+    sourceTypeEl.addEventListener("change", syncSourceFields);
+    document.querySelectorAll(".prompt-chip").forEach(button => {
+      button.addEventListener("click", () => {
+        userPromptEl.value = button.getAttribute("data-prompt") || "";
+        userPromptEl.focus();
+      });
+    });
+    syncSourceFields();
 
     loadDetail().catch(error => {
       setStatus(error.message || "初始化页面失败", true);

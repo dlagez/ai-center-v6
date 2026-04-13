@@ -1,31 +1,10 @@
-from collections.abc import Callable
 from typing import Any
 
-from src.workflow.excel_update.schemas import ExcelUpdateQueryCondition, ExcelUpdateRequest
-
-
-BusinessRecordFetcher = Callable[[ExcelUpdateRequest], list[dict[str, Any]]]
-
-
-def build_query_dict(conditions: list[ExcelUpdateQueryCondition]) -> dict[str, Any]:
-    return {condition.key: condition.value for condition in conditions}
-
+from src.workflow.excel_update.api_utils import build_query_dict, fetch_pm_records
+from src.workflow.excel_update.schemas import ExcelUpdateRequest
 
 def fetch_business_records(request: ExcelUpdateRequest) -> list[dict[str, Any]]:
-    """
-    Default placeholder fetcher.
+    return fetch_pm_records(request)
 
-    Replace this function with a business API client, or inject a custom fetcher
-    into ExcelUpdateService for integration tests and runtime wiring.
-    """
-    _ = build_query_dict(request.query_conditions)
-    return [
-        {
-            "project_no": "HKZC-N-YW-2021-001",
-            "value": 20,
-        },
-        {
-            "project_no": "HKZC-N-YW-2021-002",
-            "value": 30,
-        },
-    ]
+
+__all__ = ["build_query_dict", "fetch_business_records"]

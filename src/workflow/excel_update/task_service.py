@@ -92,10 +92,15 @@ class ExcelUpdateTaskService:
 
         request = ExcelUpdateRequest(
             excel_path=task.current_excel_path,
+            source_type=operation.source_type,
             user_prompt=operation.user_prompt,
             sheet_name=operation.sheet_name or (analysis.sheet_name if analysis else None),
             match_column=operation.match_column or (analysis.match_column if analysis else "项目编号"),
             match_field=operation.match_field or (analysis.match_field if analysis else "project_no"),
+            source_excel_path=operation.source_excel_path,
+            source_sheet_name=operation.source_sheet_name or (analysis.source_sheet_name if analysis else None),
+            source_match_column=operation.source_match_column or (analysis.source_match_column if analysis else None) or "项目编号",
+            source_value_column=operation.source_value_column or (analysis.source_value_column if analysis else None),
             target_column=target_column,
             query_conditions=operation.query_conditions or (analysis.query_conditions if analysis else []),
             output_path=str(
@@ -156,18 +161,23 @@ class ExcelUpdateTaskService:
         operation: ExcelUpdateOperationCreate,
     ) -> ExcelUpdateAnalysisResult | None:
         has_prompt = bool((operation.user_prompt or "").strip())
-        missing_fields = not all(
-            [
-                operation.sheet_name,
-                operation.match_column,
-                operation.match_field,
-                operation.target_column,
-                operation.query_conditions,
-            ]
-        )
+        missing_target_fields = not all([operation.sheet_name, operation.target_column])
+
+        if operation.source_type == "excel_file":
+            missing_source_fields = not all([operation.source_match_column, operation.source_value_column])
+            missing_fields = missing_target_fields or missing_source_fields
+        else:
+            missing_pm_fields = not all([operation.match_column, operation.match_field, operation.query_conditions])
+            missing_fields = missing_target_fields or missing_pm_fields
+
         if not has_prompt or not missing_fields:
             return None
-        return analyze_excel_update(excel_path, operation.user_prompt or "")
+
+        return analyze_excel_update(
+            excel_path,
+            operation.user_prompt or "",
+            source_excel_path=operation.source_excel_path,
+        )
 
     @staticmethod
     def _build_source_name(uploaded_file_name: str) -> str:

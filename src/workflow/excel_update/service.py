@@ -2,9 +2,9 @@ from collections.abc import Callable
 from typing import Any
 
 from src.workflow.excel_update.exporter import export_updated_workbook, resolve_output_path
-from src.workflow.excel_update.fetcher import fetch_business_records
 from src.workflow.excel_update.parser import parse_excel_template
 from src.workflow.excel_update.schemas import ExcelUpdateRequest, ExcelUpdateResult, ExcelUpdateSummary
+from src.workflow.excel_update.source_router import fetch_records_by_source
 from src.workflow.excel_update.updater import apply_excel_updates
 
 
@@ -19,7 +19,7 @@ class ExcelUpdateService:
         ]
         | None = None,
     ) -> None:
-        self.fetcher = fetcher or fetch_business_records
+        self.fetcher = fetcher or fetch_records_by_source
         self.parser = parser or parse_excel_template
         self.updater = updater or apply_excel_updates
 

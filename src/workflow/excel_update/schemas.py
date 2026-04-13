@@ -11,6 +11,10 @@ class ExcelUpdateQueryCondition(BaseModel):
 
 class ExcelUpdateRequest(BaseModel):
     excel_path: str = Field(..., description="Local Excel file path.")
+    source_type: str = Field(
+        default="pm_api",
+        description="Data source type. Supported values: pm_api, excel_file.",
+    )
     user_prompt: str | None = Field(
         default=None,
         description="Natural-language prompt used to infer update parameters.",
@@ -27,6 +31,19 @@ class ExcelUpdateRequest(BaseModel):
     query_conditions: list[ExcelUpdateQueryCondition] = Field(
         default_factory=list,
         description="Conditions used when fetching records from the business system.",
+    )
+    source_excel_path: str | None = Field(
+        default=None,
+        description="Optional source Excel file path when using excel_file mode.",
+    )
+    source_sheet_name: str | None = Field(default=None, description="Optional source sheet name.")
+    source_match_column: str = Field(
+        default="项目编号",
+        description="Source Excel column header used to locate project rows.",
+    )
+    source_value_column: str | None = Field(
+        default=None,
+        description="Source Excel column header that provides the value.",
     )
     target_column: str = Field(
         ...,
@@ -108,6 +125,9 @@ class ExcelUpdateAnalysisResult(BaseModel):
     sheet_name: str | None = Field(default=None, description="Resolved target sheet name.")
     match_column: str = Field(..., description="Resolved Excel match column.")
     match_field: str = Field(..., description="Resolved business match field.")
+    source_sheet_name: str | None = Field(default=None, description="Resolved source Excel sheet name.")
+    source_match_column: str | None = Field(default=None, description="Resolved source Excel match column.")
+    source_value_column: str | None = Field(default=None, description="Resolved source Excel value column.")
     target_column: str | None = Field(default=None, description="Resolved target Excel column.")
     query_conditions: list[ExcelUpdateQueryCondition] = Field(
         default_factory=list,
@@ -117,6 +137,10 @@ class ExcelUpdateAnalysisResult(BaseModel):
         default_factory=list,
         description="Worksheet summaries used during analysis.",
     )
+    source_sheet_options: list[ExcelSheetAnalysis] = Field(
+        default_factory=list,
+        description="Source worksheet summaries used during analysis.",
+    )
     warnings: list[str] = Field(
         default_factory=list,
         description="Non-fatal analysis warnings that may require user confirmation.",
@@ -124,10 +148,15 @@ class ExcelUpdateAnalysisResult(BaseModel):
 
 
 class ExcelUpdateOperationCreate(BaseModel):
+    source_type: str = "pm_api"
     user_prompt: str | None = None
     sheet_name: str | None = None
     match_column: str | None = None
     match_field: str | None = None
+    source_excel_path: str | None = None
+    source_sheet_name: str | None = None
+    source_match_column: str | None = None
+    source_value_column: str | None = None
     target_column: str | None = None
     query_conditions: list[ExcelUpdateQueryCondition] = Field(default_factory=list)
     overwrite_existing: bool = True

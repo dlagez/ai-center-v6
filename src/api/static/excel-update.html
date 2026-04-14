@@ -1,9 +1,9 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Excel 任务详情</title>
+  <title>Excel &#20219;&#21153;&#35814;&#24773;</title>
   <style>
     :root {
       --bg: #f4efe7;
@@ -18,7 +18,9 @@
       --danger: #a53c34;
       --shadow: 0 20px 44px rgba(73, 52, 30, 0.12);
     }
+
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
       font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -29,10 +31,12 @@
         linear-gradient(180deg, #fbf7f0 0%, var(--bg) 100%);
       min-height: 100vh;
     }
+
     .page {
       width: min(1180px, calc(100% - 32px));
       margin: 24px auto 40px;
     }
+
     .hero {
       padding: 28px;
       border-radius: 24px;
@@ -41,8 +45,19 @@
       box-shadow: var(--shadow);
       margin-bottom: 22px;
     }
-    .hero h1 { margin: 0 0 8px; font-size: clamp(28px, 4vw, 42px); }
-    .hero p { margin: 0; max-width: 820px; line-height: 1.6; color: rgba(248, 246, 241, 0.84); }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 4vw, 42px);
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 820px;
+      line-height: 1.6;
+      color: rgba(248, 246, 241, 0.84);
+    }
+
     .topbar {
       display: flex;
       justify-content: space-between;
@@ -51,6 +66,7 @@
       flex-wrap: wrap;
       margin-bottom: 18px;
     }
+
     .floating-log {
       position: fixed;
       right: 24px;
@@ -67,26 +83,31 @@
       pointer-events: none;
       transition: opacity 180ms ease, transform 180ms ease;
     }
+
     .floating-log.visible {
       opacity: 1;
       transform: translateY(0);
     }
+
     .floating-log h3 {
       margin: 0 0 8px;
       font-size: 15px;
     }
+
     .floating-log p {
       margin: 6px 0 0;
       line-height: 1.55;
       font-size: 13px;
       color: rgba(247, 244, 239, 0.9);
     }
+
     .task-cards {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 14px;
       margin-bottom: 20px;
     }
+
     .task-card {
       border: 1px solid var(--line);
       border-radius: 20px;
@@ -94,21 +115,25 @@
       background: var(--panel);
       box-shadow: var(--shadow);
     }
+
     .task-card.active {
       background: linear-gradient(180deg, rgba(241, 248, 245, 0.98), rgba(255, 250, 242, 0.98));
       border-color: rgba(13, 107, 90, 0.45);
       box-shadow: 0 18px 36px rgba(13, 107, 90, 0.12);
     }
+
     .task-card h3 {
       margin: 0 0 8px;
       font-size: 18px;
     }
+
     .task-card p {
       margin: 0;
       color: var(--muted);
       line-height: 1.55;
       font-size: 13px;
     }
+
     .badge {
       display: inline-flex;
       align-items: center;
@@ -121,6 +146,7 @@
       font-size: 12px;
       margin-bottom: 12px;
     }
+
     .panel {
       background: var(--panel);
       border: 1px solid var(--line);
@@ -129,21 +155,52 @@
       overflow: hidden;
       margin-bottom: 20px;
     }
+
     .panel-head {
       padding: 18px 22px 14px;
       background: linear-gradient(180deg, rgba(246, 238, 226, 0.9), rgba(255, 250, 242, 0.5));
       border-bottom: 1px solid rgba(215, 202, 183, 0.85);
     }
-    .panel-head h2 { margin: 0 0 6px; font-size: 18px; }
-    .panel-head p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
-    .panel-body { padding: 20px 22px 22px; }
-    form { display: grid; gap: 16px; }
-    .field { display: grid; gap: 8px; }
+
+    .panel-head h2 {
+      margin: 0 0 6px;
+      font-size: 18px;
+    }
+
+    .panel-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .panel-body {
+      padding: 20px 22px 22px;
+    }
+
+    form {
+      display: grid;
+      gap: 16px;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+    }
+
+    .compact-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.8fr);
+      gap: 14px;
+      align-items: end;
+    }
+
     .prompt-shortcuts {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
     }
+
     .prompt-chip {
       border: 1px solid rgba(13, 107, 90, 0.22);
       border-radius: 14px;
@@ -155,12 +212,20 @@
       cursor: pointer;
       text-align: left;
     }
+
     .prompt-chip:hover {
       background: #e4f2ed;
     }
-    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    label { font-size: 14px; font-weight: 600; }
-    input[type="text"], textarea {
+
+    label {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    input[type="text"],
+    textarea,
+    select,
+    input[type="file"] {
       width: 100%;
       padding: 12px 14px;
       border: 1px solid var(--line);
@@ -169,28 +234,21 @@
       color: var(--text);
       font: inherit;
     }
-    input[type="file"], select {
-      width: 100%;
-      padding: 12px 14px;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      background: #fffdf9;
-      color: var(--text);
-      font: inherit;
+
+    textarea {
+      min-height: 110px;
+      resize: vertical;
+      line-height: 1.5;
     }
-    textarea { min-height: 110px; resize: vertical; line-height: 1.5; }
-    .checkbox {
+
+    .actions {
       display: flex;
-      align-items: center;
-      gap: 10px;
-      min-height: 48px;
-      padding: 10px 12px;
-      border-radius: 14px;
-      border: 1px solid rgba(215, 202, 183, 0.9);
-      background: var(--panel-2);
+      gap: 12px;
+      flex-wrap: wrap;
     }
-    .actions { display: flex; gap: 12px; flex-wrap: wrap; }
-    button, .link-button {
+
+    button,
+    .link-button {
       border: 0;
       border-radius: 999px;
       padding: 12px 18px;
@@ -199,14 +257,33 @@
       cursor: pointer;
       text-decoration: none;
     }
-    .link-button, .primary { background: var(--accent); color: #f7f4ef; }
-    .secondary { background: #eadfce; color: var(--text); }
-    .status { min-height: 24px; color: var(--muted); font-size: 14px; }
-    .status.error { color: var(--danger); }
+
+    .link-button,
+    .primary {
+      background: var(--accent);
+      color: #f7f4ef;
+    }
+
+    .secondary {
+      background: #eadfce;
+      color: var(--text);
+    }
+
+    .status {
+      min-height: 24px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .status.error {
+      color: var(--danger);
+    }
+
     .log-list {
       display: grid;
       gap: 16px;
     }
+
     .log-item {
       position: relative;
       border: 1px solid rgba(215, 202, 183, 0.9);
@@ -215,6 +292,7 @@
       padding: 18px;
       overflow: hidden;
     }
+
     .log-item::before {
       content: "";
       position: absolute;
@@ -224,6 +302,7 @@
       width: 6px;
       background: linear-gradient(180deg, var(--accent), rgba(13, 107, 90, 0.2));
     }
+
     .log-head {
       display: flex;
       justify-content: space-between;
@@ -233,12 +312,20 @@
       margin-bottom: 10px;
       padding-left: 8px;
     }
+
     .log-title {
       display: grid;
       gap: 4px;
     }
-    .log-title strong { font-size: 17px; }
-    .muted { color: var(--muted); }
+
+    .log-title strong {
+      font-size: 17px;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
     .summary-line {
       display: flex;
       gap: 10px;
@@ -246,6 +333,7 @@
       padding-left: 8px;
       margin-bottom: 12px;
     }
+
     .summary-pill {
       display: inline-flex;
       align-items: center;
@@ -257,23 +345,60 @@
       font-size: 12px;
       font-weight: 700;
     }
-    .log-grid {
+
+    .log-disclosures {
       display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      gap: 14px;
+      gap: 12px;
       margin-top: 10px;
       padding-left: 8px;
     }
+
+    .log-toggle {
+      border: 1px solid rgba(215, 202, 183, 0.9);
+      border-radius: 16px;
+      background: var(--panel-2);
+      overflow: hidden;
+    }
+
+    .log-toggle summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      cursor: pointer;
+      list-style: none;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .log-toggle summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .log-toggle summary::after {
+      content: "\5C55\5F00";
+      color: var(--accent-2);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .log-toggle[open] summary::after {
+      content: "\6536\8D77";
+    }
+
+    .log-toggle .block {
+      margin: 0 14px 14px;
+      background: #fffdf8;
+    }
+
     .block {
       padding: 14px 16px;
       border-radius: 16px;
       border: 1px solid rgba(215, 202, 183, 0.9);
       background: var(--panel-2);
     }
-    .block h4 {
-      margin: 0 0 8px;
-      font-size: 14px;
-    }
+
     .block pre {
       margin: 0;
       white-space: pre-wrap;
@@ -282,44 +407,38 @@
       font-size: 12px;
       line-height: 1.55;
     }
+
     .scroll-pre {
       max-height: 240px;
       overflow: auto;
       padding-right: 6px;
     }
-    .scroll-pre::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-    .scroll-pre::-webkit-scrollbar-thumb {
-      background: rgba(118, 107, 97, 0.35);
-      border-radius: 999px;
-    }
-    .scroll-pre::-webkit-scrollbar-track {
-      background: rgba(215, 202, 183, 0.2);
-      border-radius: 999px;
-    }
+
     .meta-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 12px;
     }
+
     .meta-item {
       padding: 14px 16px;
       border-radius: 16px;
       border: 1px solid rgba(215, 202, 183, 0.9);
       background: #fffdf8;
     }
+
     .meta-item .label {
       color: var(--muted);
       font-size: 12px;
       margin-bottom: 6px;
     }
+
     .meta-item .value {
       font-weight: 700;
       line-height: 1.5;
       word-break: break-word;
     }
+
     .empty {
       padding: 16px;
       border-radius: 16px;
@@ -328,8 +447,10 @@
       color: var(--muted);
       font-size: 14px;
     }
+
     @media (max-width: 920px) {
-      .two-col, .log-grid, .meta-grid {
+      .meta-grid,
+      .compact-row {
         grid-template-columns: 1fr;
       }
     }
@@ -338,56 +459,62 @@
 <body>
   <main class="page">
     <section class="hero">
-      <h1>任务详情</h1>
-      <p>详情页按任务类型卡片、操作区、操作日志和任务摘要组织。当前只有一种任务类型，后续可以继续扩展更多任务卡片。</p>
+      <h1>Excel &#20219;&#21153;&#35814;&#24773;</h1>
+      <p>&#22312;&#21516;&#19968;&#20010;&#20219;&#21153;&#19979;&#36830;&#32493;&#25191;&#34892;&#22810;&#27425;&#23383;&#27573;&#26356;&#26032;&#12290;&#40664;&#35748;&#21482;&#26174;&#31034;&#25688;&#35201;&#65292;&#38656;&#35201;&#26102;&#20877;&#23637;&#24320;&#35814;&#32454;&#26085;&#24535;&#12290;</p>
     </section>
 
     <div class="topbar">
-      <a class="link-button" href="/pages/excel-update/tasks">返回任务列表</a>
-      <button id="refreshDetailButton" class="secondary" type="button">刷新当前详情</button>
+      <a class="link-button" href="/pages/excel-update/tasks">&#36820;&#22238;&#20219;&#21153;&#21015;&#34920;</a>
+      <button id="refreshDetailButton" class="secondary" type="button">&#21047;&#26032;&#24403;&#21069;&#35814;&#24773;</button>
     </div>
 
     <section class="task-cards">
       <article class="task-card active">
-        <div class="badge">当前可用</div>
-        <h3>Excel 批量更新</h3>
-        <p>基于同一个 Excel 任务持续追加多次字段更新。每次执行都会保留独立表格文件、操作记录和下载入口。</p>
+        <div class="badge">&#24403;&#21069;&#21487;&#29992;</div>
+        <h3>Excel &#25209;&#37327;&#26356;&#26032;</h3>
+        <p>&#22522;&#20110;&#21516;&#19968;&#20010; Excel &#20219;&#21153;&#25345;&#32493;&#36861;&#21152;&#22810;&#27425;&#23383;&#27573;&#26356;&#26032;&#12290;&#27599;&#27425;&#25191;&#34892;&#37117;&#20250;&#20445;&#30041;&#29420;&#31435;&#36755;&#20986;&#25991;&#20214;&#21644;&#26085;&#24535;&#12290;</p>
       </article>
     </section>
 
     <section class="panel">
       <div class="panel-head">
-        <h2>执行操作</h2>
-        <p>先输入本次更新指令，再执行。操作完成后，会在下面追加一条新的日志记录。</p>
+        <h2>&#25191;&#34892;&#25805;&#20316;</h2>
+        <p>&#36755;&#20837;&#26412;&#27425;&#26356;&#26032;&#35828;&#26126;&#21518;&#20877;&#25191;&#34892;&#12290;&#23436;&#25104;&#21518;&#20250;&#22312;&#19979;&#26041;&#36861;&#21152;&#26032;&#30340;&#26085;&#24535;&#35760;&#24405;&#12290;</p>
       </div>
       <div class="panel-body">
         <form id="operationForm">
-          <div class="field">
-            <label>当前任务 ID</label>
-            <input id="taskIdDisplay" type="text" readonly>
-          </div>
-          <div class="field">
-            <label for="sourceType">数据来源</label>
-            <select id="sourceType">
-              <option value="pm_api">PM/API 获取数据</option>
-              <option value="excel_file">源 Excel 获取数据</option>
-            </select>
-          </div>
-          <div id="sourceFileField" class="field" style="display:none;">
-            <label for="sourceFile">源 Excel 文件</label>
-            <input id="sourceFile" type="file" accept=".xlsx">
-          </div>
-          <div class="field">
-            <label for="userPrompt">操作描述</label>
-            <textarea id="userPrompt" spellcheck="false" placeholder="例如：把这张表 3 月实际产值更新一下；下一次可以再填 3 月回款。"></textarea>
-            <div class="prompt-shortcuts">
-              <button class="prompt-chip" type="button" data-prompt="使用源excel的项目编号、回款金额，来更新清欠表的三月回款。">使用源excel的项目编号、回款金额，来更新清欠表的三月回款。</button>
-              <button class="prompt-chip" type="button" data-prompt="调用pm api接口或者3月实际产值数据，把这张表3月实际产值更新一下。">调用pm api接口或者3月实际产值数据，把这张表3月实际产值更新一下。</button>
+          <div class="compact-row">
+            <div class="field">
+              <label>&#24403;&#21069;&#20219;&#21153; ID</label>
+              <input id="taskIdDisplay" type="text" readonly>
+            </div>
+            <div class="field">
+              <label for="sourceType">&#25968;&#25454;&#26469;&#28304;</label>
+              <select id="sourceType">
+                <option value="pm_api">PM/API</option>
+                <option value="excel_file">&#28304; Excel</option>
+              </select>
             </div>
           </div>
-          <div class="actions">
-            <button id="runOperationButton" class="primary" type="submit">执行当前操作</button>
+
+          <div id="sourceFileField" class="field" style="display:none;">
+            <label for="sourceFile">&#28304; Excel &#25991;&#20214;</label>
+            <input id="sourceFile" type="file" accept=".xlsx">
           </div>
+
+          <div class="field">
+            <label for="userPrompt">&#25805;&#20316;&#35828;&#26126;</label>
+            <textarea id="userPrompt" spellcheck="false" placeholder="&#20363;&#22914;&#65306;&#20351;&#29992;&#28304;excel&#30340;&#39033;&#30446;&#32534;&#21495;&#12289;&#22238;&#27454;&#37329;&#39069;&#65292;&#26469;&#26356;&#26032;&#28165;&#27424;&#34920;&#30340;3&#26376;&#22238;&#27454;&#12290;"></textarea>
+            <div class="prompt-shortcuts">
+              <button class="prompt-chip" type="button" data-prompt="&#20351;&#29992;&#28304;excel&#30340;&#39033;&#30446;&#32534;&#21495;&#12289;&#22238;&#27454;&#37329;&#39069;&#65292;&#26469;&#26356;&#26032;&#28165;&#27424;&#34920;&#30340;3&#26376;&#22238;&#27454;&#12290;">&#20351;&#29992;&#28304;excel&#30340;&#39033;&#30446;&#32534;&#21495;&#12289;&#22238;&#27454;&#37329;&#39069;&#65292;&#26469;&#26356;&#26032;&#28165;&#27424;&#34920;&#30340;3&#26376;&#22238;&#27454;&#12290;</button>
+              <button class="prompt-chip" type="button" data-prompt="&#35843;&#29992; PM API &#33719;&#21462; 3 &#26376;&#23454;&#38469;&#20135;&#20540;&#25968;&#25454;&#65292;&#26356;&#26032;&#36825;&#24352;&#34920;&#30340; 3 &#26376;&#23454;&#38469;&#20135;&#20540;&#12290;">&#35843;&#29992; PM API &#33719;&#21462; 3 &#26376;&#23454;&#38469;&#20135;&#20540;&#25968;&#25454;&#65292;&#26356;&#26032;&#36825;&#24352;&#34920;&#30340; 3 &#26376;&#23454;&#38469;&#20135;&#20540;&#12290;</button>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="runOperationButton" class="primary" type="submit">&#25191;&#34892;&#24403;&#21069;&#25805;&#20316;</button>
+          </div>
+
           <div id="status" class="status"></div>
         </form>
       </div>
@@ -395,24 +522,25 @@
 
     <section class="panel">
       <div class="panel-head">
-        <h2>操作日志</h2>
-        <p>每次操作会保存一份独立表格文件。这里按时间顺序展示日志、参数、错误、未匹配项和对应下载入口。</p>
+        <h2>&#25805;&#20316;&#26085;&#24535;</h2>
+        <p>&#40664;&#35748;&#21482;&#26174;&#31034;&#25688;&#35201;&#20449;&#24687;&#12290;&#38656;&#35201;&#26102;&#20877;&#28857;&#20987;&#23637;&#24320;&#25805;&#20316;&#35760;&#24405;&#21644;&#21464;&#26356;&#35760;&#24405;&#12290;</p>
       </div>
       <div class="panel-body" id="logPanel">
-        <div class="empty">正在加载操作日志...</div>
+        <div class="empty">&#27491;&#22312;&#21152;&#36733;&#25805;&#20316;&#26085;&#24535;...</div>
       </div>
     </section>
 
     <section class="panel">
       <div class="panel-head">
-        <h2>任务详情</h2>
-        <p>任务级别的汇总信息放在操作日志下面，方便先看过程，再看当前状态。</p>
+        <h2>&#20219;&#21153;&#25688;&#35201;</h2>
+        <p>&#36825;&#37324;&#26174;&#31034;&#20219;&#21153;&#32423;&#21035;&#29366;&#24577;&#21644;&#26368;&#26032;&#36755;&#20986;&#25991;&#20214;&#12290;</p>
       </div>
       <div class="panel-body" id="detailPanel">
-        <div class="empty">正在加载任务摘要...</div>
+        <div class="empty">&#27491;&#22312;&#21152;&#36733;&#20219;&#21153;&#25688;&#35201;...</div>
       </div>
     </section>
   </main>
+
   <aside id="floatingLog" class="floating-log" aria-live="polite"></aside>
 
   <script>
@@ -428,6 +556,7 @@
     const sourceFileFieldEl = document.getElementById("sourceFileField");
     const refreshDetailButton = document.getElementById("refreshDetailButton");
     const runOperationButton = document.getElementById("runOperationButton");
+
     document.getElementById("taskIdDisplay").value = taskId;
 
     function setStatus(message, isError = false) {
@@ -440,7 +569,7 @@
     }
 
     function toText(value) {
-      return value == null || value === "" ? "未设置" : String(value);
+      return value == null || value === "" ? "\u672A\u8BBE\u7F6E" : String(value);
     }
 
     function formatDate(value) {
@@ -451,18 +580,20 @@
     let floatingLogTimer = null;
 
     function showRecognitionLog(operation) {
-      const sheetName = operation.analysis?.sheet_name || operation.request?.sheet_name || "未识别";
-      const targetColumn = operation.analysis?.target_column || operation.request?.target_column || "未识别";
-      const sourceType = operation.request?.source_type === "excel_file" ? "源 Excel" : "PM/API";
-      const sourceMatchColumn = operation.analysis?.source_match_column || operation.request?.source_match_column || "未识别";
-      const sourceValueColumn = operation.analysis?.source_value_column || operation.request?.source_value_column || "未识别";
+      const sheetName = operation.analysis?.sheet_name || operation.request?.sheet_name || "\u672A\u8BC6\u522B";
+      const targetColumn = operation.analysis?.target_column || operation.request?.target_column || "\u672A\u8BC6\u522B";
+      const sourceType = operation.request?.source_type === "excel_file" ? "\u6E90 Excel" : "PM/API";
+      const sourceMatchColumn = operation.analysis?.source_match_column || operation.request?.source_match_column || "\u672A\u8BC6\u522B";
+      const sourceValueColumn = operation.analysis?.source_value_column || operation.request?.source_value_column || "\u672A\u8BC6\u522B";
+
       floatingLogEl.innerHTML = `
-        <h3>识别结果</h3>
-        <p>数据来源：${sourceType}</p>
-        <p>sheet页：${sheetName}</p>
-        <p>目标列名：${targetColumn}</p>
-        ${operation.request?.source_type === "excel_file" ? `<p>源列：${sourceMatchColumn} / ${sourceValueColumn}</p>` : ""}
+        <h3>\u8BC6\u522B\u7ED3\u679C</h3>
+        <p>\u6570\u636E\u6765\u6E90\uFF1A${sourceType}</p>
+        <p>Sheet\uFF1A${sheetName}</p>
+        <p>\u76EE\u6807\u5217\uFF1A${targetColumn}</p>
+        ${operation.request?.source_type === "excel_file" ? `<p>\u6E90\u5217\uFF1A${sourceMatchColumn} / ${sourceValueColumn}</p>` : ""}
       `;
+
       floatingLogEl.classList.add("visible");
       if (floatingLogTimer) {
         clearTimeout(floatingLogTimer);
@@ -475,7 +606,7 @@
     function renderLogs(task) {
       const operations = task.operations || [];
       if (!operations.length) {
-        logPanel.innerHTML = `<div class="empty">这个任务还没有任何操作记录。</div>`;
+        logPanel.innerHTML = `<div class="empty">\u8FD9\u4E2A\u4EFB\u52A1\u8FD8\u6CA1\u6709\u4EFB\u4F55\u64CD\u4F5C\u8BB0\u5F55\u3002</div>`;
         return;
       }
 
@@ -486,46 +617,51 @@
             <article class="log-item">
               <div class="log-head">
                 <div class="log-title">
-                  <strong>第 ${op.sequence} 次操作</strong>
+                  <strong>\u7B2C ${op.sequence} \u6B21\u64CD\u4F5C</strong>
                   <span class="muted">${formatDate(op.created_at)}</span>
                 </div>
                 <div class="actions">
-                  <a class="link-button" href="${op.download_url}" target="_blank" rel="noreferrer">下载本次表格</a>
+                  <a class="link-button" href="${op.download_url}" target="_blank" rel="noreferrer">\u4E0B\u8F7D\u672C\u6B21\u8868\u683C</a>
                 </div>
               </div>
 
               <div class="summary-line">
-                <span class="summary-pill">来源：${op.request?.source_type === "excel_file" ? "源 Excel" : "PM/API"}</span>
-                <span class="summary-pill">sheet页：${toText(op.analysis?.sheet_name || op.request?.sheet_name)}</span>
-                <span class="summary-pill">目标列：${toText(op.request?.target_column)}</span>
-                ${op.request?.source_type === "excel_file" ? `<span class="summary-pill">源列：${toText(op.analysis?.source_match_column || op.request?.source_match_column)} / ${toText(op.analysis?.source_value_column || op.request?.source_value_column)}</span>` : ""}
-                <span class="summary-pill">更新单元格：${op.result?.summary?.updated_cells ?? 0}</span>
-                <span class="summary-pill">匹配记录：${op.result?.summary?.matched_records ?? 0}</span>
-                <span class="summary-pill">错误数：${op.result?.summary?.error_count ?? 0}</span>
+                <span class="summary-pill">\u6765\u6E90\uFF1A${op.request?.source_type === "excel_file" ? "\u6E90 Excel" : "PM/API"}</span>
+                <span class="summary-pill">Sheet\uFF1A${toText(op.analysis?.sheet_name || op.request?.sheet_name)}</span>
+                <span class="summary-pill">\u76EE\u6807\u5217\uFF1A${toText(op.request?.target_column)}</span>
+                ${op.request?.source_type === "excel_file" ? `<span class="summary-pill">\u6E90\u5217\uFF1A${toText(op.analysis?.source_match_column || op.request?.source_match_column)} / ${toText(op.analysis?.source_value_column || op.request?.source_value_column)}</span>` : ""}
+                <span class="summary-pill">\u66F4\u65B0\u5355\u5143\u683C\uFF1A${op.result?.summary?.updated_cells ?? 0}</span>
+                <span class="summary-pill">\u5339\u914D\u8BB0\u5F55\uFF1A${op.result?.summary?.matched_records ?? 0}</span>
+                <span class="summary-pill">\u9519\u8BEF\u6570\uFF1A${op.result?.summary?.error_count ?? 0}</span>
               </div>
 
-              <div class="log-grid">
-                <div class="block">
-                  <h4>操作记录</h4>
-                  <pre>${pretty({
-                    operation_id: op.operation_id,
-                    source_type: op.request?.source_type,
-                    source_excel_path: op.request?.source_excel_path,
-                    recognized_source_sheet_name: op.analysis?.source_sheet_name || op.request?.source_sheet_name,
-                    recognized_source_match_column: op.analysis?.source_match_column || op.request?.source_match_column,
-                    recognized_source_value_column: op.analysis?.source_value_column || op.request?.source_value_column,
-                    user_prompt: op.request?.user_prompt,
-                    recognized_sheet_name: op.analysis?.sheet_name || op.request?.sheet_name,
-                    recognized_target_column: op.analysis?.target_column || op.request?.target_column,
-                    target_column: op.request?.target_column,
-                    match_column: op.request?.match_column,
-                    match_field: op.request?.match_field
-                  })}</pre>
-                </div>
-                <div class="block">
-                  <h4>变更记录</h4>
-                  <pre class="scroll-pre">${pretty(op.result?.changes || [])}</pre>
-                </div>
+              <div class="log-disclosures">
+                <details class="log-toggle">
+                  <summary>\u64CD\u4F5C\u8BB0\u5F55</summary>
+                  <div class="block">
+                    <pre>${pretty({
+                      operation_id: op.operation_id,
+                      source_type: op.request?.source_type,
+                      source_excel_path: op.request?.source_excel_path,
+                      recognized_source_sheet_name: op.analysis?.source_sheet_name || op.request?.source_sheet_name,
+                      recognized_source_match_column: op.analysis?.source_match_column || op.request?.source_match_column,
+                      recognized_source_value_column: op.analysis?.source_value_column || op.request?.source_value_column,
+                      user_prompt: op.request?.user_prompt,
+                      recognized_sheet_name: op.analysis?.sheet_name || op.request?.sheet_name,
+                      recognized_target_column: op.analysis?.target_column || op.request?.target_column,
+                      target_column: op.request?.target_column,
+                      match_column: op.request?.match_column,
+                      match_field: op.request?.match_field
+                    })}</pre>
+                  </div>
+                </details>
+
+                <details class="log-toggle">
+                  <summary>\u53D8\u66F4\u8BB0\u5F55</summary>
+                  <div class="block">
+                    <pre class="scroll-pre">${pretty(op.result?.changes || [])}</pre>
+                  </div>
+                </details>
               </div>
             </article>
           `).join("")}
@@ -537,36 +673,36 @@
       detailPanel.innerHTML = `
         <div class="meta-grid">
           <div class="meta-item">
-            <div class="label">文件名</div>
+            <div class="label">\u6587\u4EF6\u540D</div>
             <div class="value">${task.file_name}</div>
           </div>
           <div class="meta-item">
-            <div class="label">任务 ID</div>
+            <div class="label">\u4EFB\u52A1 ID</div>
             <div class="value">${task.task_id}</div>
           </div>
           <div class="meta-item">
-            <div class="label">创建时间</div>
+            <div class="label">\u521B\u5EFA\u65F6\u95F4</div>
             <div class="value">${formatDate(task.created_at)}</div>
           </div>
           <div class="meta-item">
-            <div class="label">更新时间</div>
+            <div class="label">\u66F4\u65B0\u65F6\u95F4</div>
             <div class="value">${formatDate(task.updated_at)}</div>
           </div>
           <div class="meta-item">
-            <div class="label">操作次数</div>
+            <div class="label">\u64CD\u4F5C\u6B21\u6570</div>
             <div class="value">${task.operation_count}</div>
           </div>
           <div class="meta-item">
-            <div class="label">当前最新列</div>
+            <div class="label">\u5F53\u524D\u6700\u65B0\u5217</div>
             <div class="value">${toText(task.latest_target_column)}</div>
           </div>
           <div class="meta-item">
-            <div class="label">当前文件</div>
+            <div class="label">\u5F53\u524D\u6587\u4EF6</div>
             <div class="value">${task.latest_output_file_name}</div>
           </div>
           <div class="meta-item">
-            <div class="label">下载当前最新文件</div>
-            <div class="value"><a class="link-button" href="${task.download_url}" target="_blank" rel="noreferrer">下载最新表格</a></div>
+            <div class="label">\u4E0B\u8F7D\u5F53\u524D\u6700\u65B0\u6587\u4EF6</div>
+            <div class="value"><a class="link-button" href="${task.download_url}" target="_blank" rel="noreferrer">\u4E0B\u8F7D\u6700\u65B0\u8868\u683C</a></div>
           </div>
         </div>
       `;
@@ -574,8 +710,8 @@
 
     async function loadDetail() {
       if (!taskId) {
-        logPanel.innerHTML = `<div class="empty">缺少 task_id，请从任务列表页进入。</div>`;
-        detailPanel.innerHTML = `<div class="empty">缺少 task_id，请从任务列表页进入。</div>`;
+        logPanel.innerHTML = `<div class="empty">\u7F3A\u5C11 task_id\uFF0C\u8BF7\u4ECE\u4EFB\u52A1\u5217\u8868\u9875\u8FDB\u5165\u3002</div>`;
+        detailPanel.innerHTML = `<div class="empty">\u7F3A\u5C11 task_id\uFF0C\u8BF7\u4ECE\u4EFB\u52A1\u5217\u8868\u9875\u8FDB\u5165\u3002</div>`;
         runOperationButton.disabled = true;
         return;
       }
@@ -583,8 +719,9 @@
       const response = await fetch(`/workflow/excel-update/tasks/${encodeURIComponent(taskId)}`);
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(payload.detail || "获取任务详情失败");
+        throw new Error(payload.detail || "\u83B7\u53D6\u4EFB\u52A1\u8BE6\u60C5\u5931\u8D25");
       }
+
       renderLogs(payload);
       renderDetail(payload);
     }
@@ -595,23 +732,28 @@
 
     operationForm.addEventListener("submit", async (event) => {
       event.preventDefault();
+
       if (!taskId) {
-        setStatus("缺少任务 ID，请从任务列表页进入。", true);
+        setStatus("\u7F3A\u5C11\u4EFB\u52A1 ID\uFF0C\u8BF7\u4ECE\u4EFB\u52A1\u5217\u8868\u9875\u8FDB\u5165\u3002", true);
         return;
       }
+
       runOperationButton.disabled = true;
       refreshDetailButton.disabled = true;
-      setStatus("正在执行更新操作...");
+      setStatus("\u6B63\u5728\u6267\u884C\u66F4\u65B0\u64CD\u4F5C...");
+
       try {
         const formData = new FormData();
         formData.append("source_type", sourceTypeEl.value);
+
         if (sourceTypeEl.value === "excel_file") {
           const sourceFile = document.getElementById("sourceFile").files?.[0];
           if (!sourceFile) {
-            throw new Error("请选择源 Excel 文件");
+            throw new Error("\u8BF7\u9009\u62E9\u6E90 Excel \u6587\u4EF6");
           }
           formData.append("source_file", sourceFile);
         }
+
         formData.append("user_prompt", document.getElementById("userPrompt").value.trim());
 
         const response = await fetch(`/workflow/excel-update/tasks/${encodeURIComponent(taskId)}/operations`, {
@@ -620,13 +762,14 @@
         });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
-          throw new Error(payload.detail || "执行更新操作失败");
+          throw new Error(payload.detail || "\u6267\u884C\u66F4\u65B0\u64CD\u4F5C\u5931\u8D25");
         }
+
         await loadDetail();
         showRecognitionLog(payload);
-        setStatus(`已完成第 ${payload.sequence} 次操作，更新列：${payload.request?.target_column || "未指定"}`);
+        setStatus(`\u5DF2\u5B8C\u6210\u7B2C ${payload.sequence} \u6B21\u64CD\u4F5C\uFF0C\u66F4\u65B0\u5217\uFF1A${payload.request?.target_column || "\u672A\u6307\u5B9A"}`);
       } catch (error) {
-        setStatus(error.message || "执行更新操作失败", true);
+        setStatus(error.message || "\u6267\u884C\u66F4\u65B0\u64CD\u4F5C\u5931\u8D25", true);
       } finally {
         runOperationButton.disabled = false;
         refreshDetailButton.disabled = false;
@@ -635,30 +778,33 @@
 
     refreshDetailButton.addEventListener("click", async () => {
       refreshDetailButton.disabled = true;
-      setStatus("正在刷新任务详情...");
+      setStatus("\u6B63\u5728\u5237\u65B0\u4EFB\u52A1\u8BE6\u60C5...");
+
       try {
         await loadDetail();
-        setStatus(`任务详情已刷新：${taskId}`);
+        setStatus(`\u4EFB\u52A1\u8BE6\u60C5\u5DF2\u5237\u65B0\uFF1A${taskId}`);
       } catch (error) {
-        setStatus(error.message || "刷新任务详情失败", true);
+        setStatus(error.message || "\u5237\u65B0\u4EFB\u52A1\u8BE6\u60C5\u5931\u8D25", true);
       } finally {
         refreshDetailButton.disabled = false;
       }
     });
 
     sourceTypeEl.addEventListener("change", syncSourceFields);
+
     document.querySelectorAll(".prompt-chip").forEach(button => {
       button.addEventListener("click", () => {
         userPromptEl.value = button.getAttribute("data-prompt") || "";
         userPromptEl.focus();
       });
     });
+
     syncSourceFields();
 
     loadDetail().catch(error => {
-      setStatus(error.message || "初始化页面失败", true);
-      logPanel.innerHTML = `<div class="empty">${error.message || "初始化页面失败"}</div>`;
-      detailPanel.innerHTML = `<div class="empty">${error.message || "初始化页面失败"}</div>`;
+      setStatus(error.message || "\u521D\u59CB\u5316\u9875\u9762\u5931\u8D25", true);
+      logPanel.innerHTML = `<div class="empty">${error.message || "\u521D\u59CB\u5316\u9875\u9762\u5931\u8D25"}</div>`;
+      detailPanel.innerHTML = `<div class="empty">${error.message || "\u521D\u59CB\u5316\u9875\u9762\u5931\u8D25"}</div>`;
     });
   </script>
 </body>

@@ -3,8 +3,9 @@ import shutil
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from sqlalchemy.orm import Session
 
 from src.agents.sql.service import SqlAgentService
 from src.api.schemas import (
@@ -12,20 +13,36 @@ from src.api.schemas import (
     IngestRequest,
     SearchRequest,
     SqlAgentRequest,
+    SystemConfigCreateRequest,
+    SystemConfigResponse,
+    SystemConfigUpdateRequest,
     VideoInspectionRequest,
     VisionChatRequest,
 )
 from src.config.settings import settings
+from src.db.session import get_db
 from src.media.service import VideoInspectionService
 from src.models.llm import vision_completion
 from src.observability import observe
 from src.rag.agentic.service import AgenticRagService
 from src.rag.service import KnowledgeIngestionService, KnowledgeSearchService
+from src.repositories.system_config_repository import SystemConfigRepository
+from src.services.system_config_service import SystemConfigService
 from src.workflow.excel_update.analyzer import analyze_excel_update
 from src.workflow.excel_update.schemas import ExcelUpdateOperationCreate
 from src.workflow.excel_update.task_service import ExcelUpdateTaskService
 
 router = APIRouter()
+
+
+def _to_system_config_response(item) -> SystemConfigResponse:
+    return SystemConfigResponse(
+        id=item.id,
+        key=item.key,
+        value=item.value,
+        created_at=item.created_at,
+        updated_at=item.updated_at,
+    )
 
 
 def _parse_json_form_field(value: str | None, field_name: str) -> list[dict]:
@@ -100,6 +117,66 @@ async def sql_agent_answer(request: SqlAgentRequest) -> dict:
         raise HTTPException(status_code=500, detail=f"SQL agent failed: {exc}") from exc
 
     return result.model_dump()
+
+
+@router.post("/system-configs", response_model=SystemConfigResponse)
+async def create_system_config(
+    request: SystemConfigCreateRequest,
+    db: Session = Depends(get_db),
+) -> SystemConfigResponse:
+    service = SystemConfigService(SystemConfigRepository(db))
+
+    try:
+        item = service.create_config(key=request.key, value=request.value)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return _to_system_config_response(item)
+
+
+@router.get("/system-configs", response_model=list[SystemConfigResponse])
+async def list_system_configs(db: Session = Depends(get_db)) -> list[SystemConfigResponse]:
+    service = SystemConfigService(SystemConfigRepository(db))
+    items = service.list_configs()
+    return [_to_system_config_response(item) for item in items]
+
+
+@router.get("/system-configs/{config_id}", response_model=SystemConfigResponse)
+async def get_system_config(config_id: int, db: Session = Depends(get_db)) -> SystemConfigResponse:
+    service = SystemConfigService(SystemConfigRepository(db))
+
+    try:
+        item = service.get_config(config_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    return _to_system_config_response(item)
+
+
+@router.put("/system-configs/{config_id}", response_model=SystemConfigResponse)
+async def update_system_config(
+    config_id: int,
+    request: SystemConfigUpdateRequest,
+    db: Session = Depends(get_db),
+) -> SystemConfigResponse:
+    service = SystemConfigService(SystemConfigRepository(db))
+
+    try:
+        item = service.update_config(config_id=config_id, value=request.value)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    return _to_system_config_response(item)
+
+
+@router.delete("/system-configs/{config_id}", status_code=204)
+async def delete_system_config(config_id: int, db: Session = Depends(get_db)) -> None:
+    service = SystemConfigService(SystemConfigRepository(db))
+
+    try:
+        service.delete_config(config_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/knowledge/ingest")

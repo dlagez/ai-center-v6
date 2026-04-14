@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -20,6 +22,23 @@ class SqlAgentRequest(BaseModel):
     dialect: str | None = Field(default=None, description="Database dialect: sqlite or mysql.")
     db_path: str | None = Field(default=None, description="SQLite database file path.")
     max_rows: int = Field(default=20, ge=1, le=100, description="Maximum number of rows to read.")
+
+
+class SystemConfigCreateRequest(BaseModel):
+    key: str = Field(..., min_length=1, max_length=100, description="Configuration key.")
+    value: str = Field(..., description="Configuration value.")
+
+
+class SystemConfigUpdateRequest(BaseModel):
+    value: str = Field(..., description="Configuration value.")
+
+
+class SystemConfigResponse(BaseModel):
+    id: int
+    key: str
+    value: str
+    created_at: datetime
+    updated_at: datetime
 
 
 class VisionChatRequest(BaseModel):

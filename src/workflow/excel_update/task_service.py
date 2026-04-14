@@ -1,16 +1,19 @@
-import json
 import shutil
 from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
 from src.config.settings import settings
+from src.db.session import SessionLocal, get_engine
 from src.workflow.excel_update.analyzer import analyze_excel_update
+from src.workflow.excel_update.models import ExcelUpdateOperation, ExcelUpdateTask
+from src.workflow.excel_update.repository import ExcelUpdateTaskRepository
 from src.workflow.excel_update.schemas import (
     ExcelUpdateAnalysisResult,
     ExcelUpdateOperationCreate,
     ExcelUpdateOperationResult,
     ExcelUpdateRequest,
+    ExcelUpdateResult,
     ExcelUpdateTaskDetail,
     ExcelUpdateTaskSummary,
 )
@@ -22,6 +25,7 @@ class ExcelUpdateTaskService:
         self.workflow_service = workflow_service or ExcelUpdateService()
         self.base_dir = Path(settings.excel_update_output_dir).expanduser().resolve()
         self.base_dir.mkdir(parents=True, exist_ok=True)
+        get_engine()
 
     def create_task(self, source_excel_path: str, uploaded_file_name: str) -> ExcelUpdateTaskDetail:
         task_id = f"excel_update_{uuid4().hex}"
@@ -47,40 +51,23 @@ class ExcelUpdateTaskService:
             current_excel_path=str(stored_source_path),
             operations=[],
         )
-        self._save_task(task)
+        with SessionLocal() as db:
+            repository = ExcelUpdateTaskRepository(db)
+            repository.create_task(self._to_task_entity(task))
         return task
 
     def list_tasks(self) -> list[ExcelUpdateTaskSummary]:
-        tasks: list[ExcelUpdateTaskSummary] = []
-        for task_dir in sorted(self.base_dir.glob("excel_update_*"), reverse=True):
-            result_path = task_dir / "result.json"
-            if not result_path.is_file():
-                continue
-            payload = json.loads(result_path.read_text(encoding="utf-8"))
-            task = ExcelUpdateTaskDetail.model_validate(payload)
-            tasks.append(
-                ExcelUpdateTaskSummary(
-                    task_id=task.task_id,
-                    file_name=task.file_name,
-                    created_at=task.created_at,
-                    updated_at=task.updated_at,
-                    operation_count=task.operation_count,
-                    latest_target_column=task.latest_target_column,
-                    latest_output_file_name=task.latest_output_file_name,
-                    detail_url=task.detail_url,
-                    download_url=task.download_url,
-                )
-            )
-        return tasks
+        with SessionLocal() as db:
+            repository = ExcelUpdateTaskRepository(db)
+            return [self._to_task_summary(item) for item in repository.list_tasks()]
 
     def get_task(self, task_id: str) -> ExcelUpdateTaskDetail:
-        task_dir = self.base_dir / task_id
-        result_path = task_dir / "result.json"
-        if not result_path.is_file():
+        with SessionLocal() as db:
+            repository = ExcelUpdateTaskRepository(db)
+            task = repository.get_task(task_id)
+        if task is None:
             raise FileNotFoundError(f"Excel update task not found: {task_id}")
-
-        payload = json.loads(result_path.read_text(encoding="utf-8"))
-        return ExcelUpdateTaskDetail.model_validate(payload)
+        return self._to_task_detail(task)
 
     def run_operation(self, task_id: str, operation: ExcelUpdateOperationCreate) -> ExcelUpdateOperationResult:
         task = self.get_task(task_id)
@@ -132,7 +119,18 @@ class ExcelUpdateTaskService:
         task.latest_target_column = request.target_column
         task.latest_output_file_name = operation_result.output_file_name
         task.current_excel_path = result.output_path or task.current_excel_path
-        self._save_task(task)
+        with SessionLocal() as db:
+            repository = ExcelUpdateTaskRepository(db)
+            task_entity = repository.get_task(task_id)
+            if task_entity is None:
+                raise FileNotFoundError(f"Excel update task not found: {task_id}")
+            task_entity.updated_at = task.updated_at
+            task_entity.operation_count = task.operation_count
+            task_entity.latest_target_column = task.latest_target_column
+            task_entity.latest_output_file_name = task.latest_output_file_name
+            task_entity.current_excel_path = task.current_excel_path
+            operation_entity = self._to_operation_entity(task_id, operation_result)
+            repository.add_operation(task_entity, operation_entity)
         return operation_result
 
     def get_output_file_path(self, task_id: str) -> Path:
@@ -198,9 +196,84 @@ class ExcelUpdateTaskService:
         safe_target = self._sanitize_name(target_column)
         return f"{source.stem}_step_{sequence:02d}_{safe_target}{suffix}"
 
-    def _save_task(self, payload: ExcelUpdateTaskDetail) -> None:
-        path = self.base_dir / payload.task_id / "result.json"
-        path.write_text(
-            json.dumps(payload.model_dump(mode="json"), ensure_ascii=False, indent=2),
-            encoding="utf-8",
+    @staticmethod
+    def _to_task_entity(payload: ExcelUpdateTaskDetail) -> ExcelUpdateTask:
+        return ExcelUpdateTask(
+            task_id=payload.task_id,
+            file_name=payload.file_name,
+            created_at=payload.created_at,
+            updated_at=payload.updated_at,
+            operation_count=payload.operation_count,
+            latest_target_column=payload.latest_target_column,
+            latest_output_file_name=payload.latest_output_file_name,
+            detail_url=payload.detail_url,
+            download_url=payload.download_url,
+            source_excel_path=payload.source_excel_path,
+            current_excel_path=payload.current_excel_path,
+        )
+
+    @staticmethod
+    def _to_operation_entity(task_id: str, payload: ExcelUpdateOperationResult) -> ExcelUpdateOperation:
+        analysis_payload = payload.analysis.model_dump(mode="json") if payload.analysis else None
+        return ExcelUpdateOperation(
+            operation_id=payload.operation_id,
+            task_id=task_id,
+            sequence=payload.sequence,
+            created_at=payload.created_at,
+            output_file_name=payload.output_file_name,
+            download_url=payload.download_url,
+            detail_url=payload.detail_url,
+            request_payload=payload.request.model_dump(mode="json"),
+            analysis_payload=analysis_payload,
+            result_payload=payload.result.model_dump(mode="json"),
+        )
+
+    @staticmethod
+    def _to_task_summary(entity: ExcelUpdateTask) -> ExcelUpdateTaskSummary:
+        return ExcelUpdateTaskSummary(
+            task_id=entity.task_id,
+            file_name=entity.file_name,
+            created_at=entity.created_at,
+            updated_at=entity.updated_at,
+            operation_count=entity.operation_count,
+            latest_target_column=entity.latest_target_column,
+            latest_output_file_name=entity.latest_output_file_name,
+            detail_url=entity.detail_url,
+            download_url=entity.download_url,
+        )
+
+    @staticmethod
+    def _to_task_detail(entity: ExcelUpdateTask) -> ExcelUpdateTaskDetail:
+        return ExcelUpdateTaskDetail(
+            task_id=entity.task_id,
+            file_name=entity.file_name,
+            created_at=entity.created_at,
+            updated_at=entity.updated_at,
+            operation_count=entity.operation_count,
+            latest_target_column=entity.latest_target_column,
+            latest_output_file_name=entity.latest_output_file_name,
+            detail_url=entity.detail_url,
+            download_url=entity.download_url,
+            source_excel_path=entity.source_excel_path,
+            current_excel_path=entity.current_excel_path,
+            operations=[ExcelUpdateTaskService._to_operation_result(item) for item in entity.operations],
+        )
+
+    @staticmethod
+    def _to_operation_result(entity: ExcelUpdateOperation) -> ExcelUpdateOperationResult:
+        analysis = (
+            ExcelUpdateAnalysisResult.model_validate(entity.analysis_payload)
+            if entity.analysis_payload is not None
+            else None
+        )
+        return ExcelUpdateOperationResult(
+            operation_id=entity.operation_id,
+            sequence=entity.sequence,
+            created_at=entity.created_at,
+            output_file_name=entity.output_file_name,
+            download_url=entity.download_url,
+            detail_url=entity.detail_url,
+            request=ExcelUpdateRequest.model_validate(entity.request_payload),
+            analysis=analysis,
+            result=ExcelUpdateResult.model_validate(entity.result_payload),
         )

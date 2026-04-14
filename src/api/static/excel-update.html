@@ -1,9 +1,9 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Excel &#20219;&#21153;&#35814;&#24773;</title>
+  <title>Excel 任务详情</title>
   <style>
     :root {
       --bg: #f4efe7;
@@ -377,14 +377,14 @@
     }
 
     .log-toggle summary::after {
-      content: "\5C55\5F00";
+      content: "展开";
       color: var(--accent-2);
       font-size: 12px;
       font-weight: 700;
     }
 
     .log-toggle[open] summary::after {
-      content: "\6536\8D77";
+      content: "收起";
     }
 
     .log-toggle .block {
@@ -459,60 +459,60 @@
 <body>
   <main class="page">
     <section class="hero">
-      <h1>Excel &#20219;&#21153;&#35814;&#24773;</h1>
-      <p>&#22312;&#21516;&#19968;&#20010;&#20219;&#21153;&#19979;&#36830;&#32493;&#25191;&#34892;&#22810;&#27425;&#23383;&#27573;&#26356;&#26032;&#12290;&#40664;&#35748;&#21482;&#26174;&#31034;&#25688;&#35201;&#65292;&#38656;&#35201;&#26102;&#20877;&#23637;&#24320;&#35814;&#32454;&#26085;&#24535;&#12290;</p>
+      <h1>Excel 任务详情</h1>
+      <p>在同一个任务下连续执行多次字段更新。默认只显示摘要，详细日志按需展开。</p>
     </section>
 
     <div class="topbar">
-      <a class="link-button" href="/pages/excel-update/tasks">&#36820;&#22238;&#20219;&#21153;&#21015;&#34920;</a>
-      <button id="refreshDetailButton" class="secondary" type="button">&#21047;&#26032;&#24403;&#21069;&#35814;&#24773;</button>
+      <a class="link-button" href="/pages/excel-update/tasks">返回任务列表</a>
+      <button id="refreshDetailButton" class="secondary" type="button">刷新当前详情</button>
     </div>
 
     <section class="task-cards">
       <article class="task-card active">
-        <div class="badge">&#24403;&#21069;&#21487;&#29992;</div>
-        <h3>Excel &#25209;&#37327;&#26356;&#26032;</h3>
-        <p>&#22522;&#20110;&#21516;&#19968;&#20010; Excel &#20219;&#21153;&#25345;&#32493;&#36861;&#21152;&#22810;&#27425;&#23383;&#27573;&#26356;&#26032;&#12290;&#27599;&#27425;&#25191;&#34892;&#37117;&#20250;&#20445;&#30041;&#29420;&#31435;&#36755;&#20986;&#25991;&#20214;&#21644;&#26085;&#24535;&#12290;</p>
+        <div class="badge">当前可用</div>
+        <h3>Excel 批量更新</h3>
+        <p>基于同一个 Excel 任务持续追加多次字段更新。每次执行都会保留独立输出文件和操作日志。</p>
       </article>
     </section>
 
     <section class="panel">
       <div class="panel-head">
-        <h2>&#25191;&#34892;&#25805;&#20316;</h2>
-        <p>&#36755;&#20837;&#26412;&#27425;&#26356;&#26032;&#35828;&#26126;&#21518;&#20877;&#25191;&#34892;&#12290;&#23436;&#25104;&#21518;&#20250;&#22312;&#19979;&#26041;&#36861;&#21152;&#26032;&#30340;&#26085;&#24535;&#35760;&#24405;&#12290;</p>
+        <h2>执行操作</h2>
+        <p>输入本次更新说明后再执行。完成后会在下方追加新的日志记录。</p>
       </div>
       <div class="panel-body">
         <form id="operationForm">
           <div class="compact-row">
             <div class="field">
-              <label>&#24403;&#21069;&#20219;&#21153; ID</label>
+              <label>当前任务 ID</label>
               <input id="taskIdDisplay" type="text" readonly>
             </div>
             <div class="field">
-              <label for="sourceType">&#25968;&#25454;&#26469;&#28304;</label>
+              <label for="sourceType">数据来源</label>
               <select id="sourceType">
                 <option value="pm_api">PM/API</option>
-                <option value="excel_file">&#28304; Excel</option>
+                <option value="excel_file">源 Excel</option>
               </select>
             </div>
           </div>
 
           <div id="sourceFileField" class="field" style="display:none;">
-            <label for="sourceFile">&#28304; Excel &#25991;&#20214;</label>
+            <label for="sourceFile">源 Excel 文件</label>
             <input id="sourceFile" type="file" accept=".xlsx">
           </div>
 
           <div class="field">
-            <label for="userPrompt">&#25805;&#20316;&#35828;&#26126;</label>
-            <textarea id="userPrompt" spellcheck="false" placeholder="&#20363;&#22914;&#65306;&#20351;&#29992;&#28304;excel&#30340;&#39033;&#30446;&#32534;&#21495;&#12289;&#22238;&#27454;&#37329;&#39069;&#65292;&#26469;&#26356;&#26032;&#28165;&#27424;&#34920;&#30340;3&#26376;&#22238;&#27454;&#12290;"></textarea>
+            <label for="userPrompt">操作说明</label>
+            <textarea id="userPrompt" spellcheck="false" placeholder="例如：使用源excel的项目编号、回款金额，来更新清欠表的3月回款。"></textarea>
             <div class="prompt-shortcuts">
-              <button class="prompt-chip" type="button" data-prompt="&#20351;&#29992;&#28304;excel&#30340;&#39033;&#30446;&#32534;&#21495;&#12289;&#22238;&#27454;&#37329;&#39069;&#65292;&#26469;&#26356;&#26032;&#28165;&#27424;&#34920;&#30340;3&#26376;&#22238;&#27454;&#12290;">&#20351;&#29992;&#28304;excel&#30340;&#39033;&#30446;&#32534;&#21495;&#12289;&#22238;&#27454;&#37329;&#39069;&#65292;&#26469;&#26356;&#26032;&#28165;&#27424;&#34920;&#30340;3&#26376;&#22238;&#27454;&#12290;</button>
-              <button class="prompt-chip" type="button" data-prompt="&#35843;&#29992; PM API &#33719;&#21462; 3 &#26376;&#23454;&#38469;&#20135;&#20540;&#25968;&#25454;&#65292;&#26356;&#26032;&#36825;&#24352;&#34920;&#30340; 3 &#26376;&#23454;&#38469;&#20135;&#20540;&#12290;">&#35843;&#29992; PM API &#33719;&#21462; 3 &#26376;&#23454;&#38469;&#20135;&#20540;&#25968;&#25454;&#65292;&#26356;&#26032;&#36825;&#24352;&#34920;&#30340; 3 &#26376;&#23454;&#38469;&#20135;&#20540;&#12290;</button>
+              <button class="prompt-chip" type="button" data-prompt="使用源excel的项目编号、回款金额，来更新清欠表的3月回款。">使用源excel的项目编号、回款金额，来更新清欠表的3月回款。</button>
+              <button class="prompt-chip" type="button" data-prompt="调用 PM API 获取 3 月实际产值数据，更新这张表的 3 月实际产值。">调用 PM API 获取 3 月实际产值数据，更新这张表的 3 月实际产值。</button>
             </div>
           </div>
 
           <div class="actions">
-            <button id="runOperationButton" class="primary" type="submit">&#25191;&#34892;&#24403;&#21069;&#25805;&#20316;</button>
+            <button id="runOperationButton" class="primary" type="submit">执行当前操作</button>
           </div>
 
           <div id="status" class="status"></div>
@@ -522,21 +522,21 @@
 
     <section class="panel">
       <div class="panel-head">
-        <h2>&#25805;&#20316;&#26085;&#24535;</h2>
-        <p>&#40664;&#35748;&#21482;&#26174;&#31034;&#25688;&#35201;&#20449;&#24687;&#12290;&#38656;&#35201;&#26102;&#20877;&#28857;&#20987;&#23637;&#24320;&#25805;&#20316;&#35760;&#24405;&#21644;&#21464;&#26356;&#35760;&#24405;&#12290;</p>
+        <h2>操作日志</h2>
+        <p>默认只展示摘要信息。需要时再点击展开操作记录和变更记录。</p>
       </div>
       <div class="panel-body" id="logPanel">
-        <div class="empty">&#27491;&#22312;&#21152;&#36733;&#25805;&#20316;&#26085;&#24535;...</div>
+        <div class="empty">正在加载操作日志...</div>
       </div>
     </section>
 
     <section class="panel">
       <div class="panel-head">
-        <h2>&#20219;&#21153;&#25688;&#35201;</h2>
-        <p>&#36825;&#37324;&#26174;&#31034;&#20219;&#21153;&#32423;&#21035;&#29366;&#24577;&#21644;&#26368;&#26032;&#36755;&#20986;&#25991;&#20214;&#12290;</p>
+        <h2>任务摘要</h2>
+        <p>这里展示任务级别状态和当前最新输出文件。</p>
       </div>
       <div class="panel-body" id="detailPanel">
-        <div class="empty">&#27491;&#22312;&#21152;&#36733;&#20219;&#21153;&#25688;&#35201;...</div>
+        <div class="empty">正在加载任务摘要...</div>
       </div>
     </section>
   </main>
@@ -569,7 +569,7 @@
     }
 
     function toText(value) {
-      return value == null || value === "" ? "\u672A\u8BBE\u7F6E" : String(value);
+      return value == null || value === "" ? "未设置" : String(value);
     }
 
     function formatDate(value) {
@@ -580,18 +580,18 @@
     let floatingLogTimer = null;
 
     function showRecognitionLog(operation) {
-      const sheetName = operation.analysis?.sheet_name || operation.request?.sheet_name || "\u672A\u8BC6\u522B";
-      const targetColumn = operation.analysis?.target_column || operation.request?.target_column || "\u672A\u8BC6\u522B";
-      const sourceType = operation.request?.source_type === "excel_file" ? "\u6E90 Excel" : "PM/API";
-      const sourceMatchColumn = operation.analysis?.source_match_column || operation.request?.source_match_column || "\u672A\u8BC6\u522B";
-      const sourceValueColumn = operation.analysis?.source_value_column || operation.request?.source_value_column || "\u672A\u8BC6\u522B";
+      const sheetName = operation.analysis?.sheet_name || operation.request?.sheet_name || "未识别";
+      const targetColumn = operation.analysis?.target_column || operation.request?.target_column || "未识别";
+      const sourceType = operation.request?.source_type === "excel_file" ? "源 Excel" : "PM/API";
+      const sourceMatchColumn = operation.analysis?.source_match_column || operation.request?.source_match_column || "未识别";
+      const sourceValueColumn = operation.analysis?.source_value_column || operation.request?.source_value_column || "未识别";
 
       floatingLogEl.innerHTML = `
-        <h3>\u8BC6\u522B\u7ED3\u679C</h3>
-        <p>\u6570\u636E\u6765\u6E90\uFF1A${sourceType}</p>
-        <p>Sheet\uFF1A${sheetName}</p>
-        <p>\u76EE\u6807\u5217\uFF1A${targetColumn}</p>
-        ${operation.request?.source_type === "excel_file" ? `<p>\u6E90\u5217\uFF1A${sourceMatchColumn} / ${sourceValueColumn}</p>` : ""}
+        <h3>识别结果</h3>
+        <p>数据来源：${sourceType}</p>
+        <p>Sheet：${sheetName}</p>
+        <p>目标列：${targetColumn}</p>
+        ${operation.request?.source_type === "excel_file" ? `<p>源列：${sourceMatchColumn} / ${sourceValueColumn}</p>` : ""}
       `;
 
       floatingLogEl.classList.add("visible");
@@ -606,7 +606,7 @@
     function renderLogs(task) {
       const operations = task.operations || [];
       if (!operations.length) {
-        logPanel.innerHTML = `<div class="empty">\u8FD9\u4E2A\u4EFB\u52A1\u8FD8\u6CA1\u6709\u4EFB\u4F55\u64CD\u4F5C\u8BB0\u5F55\u3002</div>`;
+        logPanel.innerHTML = `<div class="empty">这个任务还没有任何操作记录。</div>`;
         return;
       }
 
@@ -617,27 +617,27 @@
             <article class="log-item">
               <div class="log-head">
                 <div class="log-title">
-                  <strong>\u7B2C ${op.sequence} \u6B21\u64CD\u4F5C</strong>
+                  <strong>第 ${op.sequence} 次操作</strong>
                   <span class="muted">${formatDate(op.created_at)}</span>
                 </div>
                 <div class="actions">
-                  <a class="link-button" href="${op.download_url}" target="_blank" rel="noreferrer">\u4E0B\u8F7D\u672C\u6B21\u8868\u683C</a>
+                  <a class="link-button" href="${op.download_url}" target="_blank" rel="noreferrer">下载本次表格</a>
                 </div>
               </div>
 
               <div class="summary-line">
-                <span class="summary-pill">\u6765\u6E90\uFF1A${op.request?.source_type === "excel_file" ? "\u6E90 Excel" : "PM/API"}</span>
-                <span class="summary-pill">Sheet\uFF1A${toText(op.analysis?.sheet_name || op.request?.sheet_name)}</span>
-                <span class="summary-pill">\u76EE\u6807\u5217\uFF1A${toText(op.request?.target_column)}</span>
-                ${op.request?.source_type === "excel_file" ? `<span class="summary-pill">\u6E90\u5217\uFF1A${toText(op.analysis?.source_match_column || op.request?.source_match_column)} / ${toText(op.analysis?.source_value_column || op.request?.source_value_column)}</span>` : ""}
-                <span class="summary-pill">\u66F4\u65B0\u5355\u5143\u683C\uFF1A${op.result?.summary?.updated_cells ?? 0}</span>
-                <span class="summary-pill">\u5339\u914D\u8BB0\u5F55\uFF1A${op.result?.summary?.matched_records ?? 0}</span>
-                <span class="summary-pill">\u9519\u8BEF\u6570\uFF1A${op.result?.summary?.error_count ?? 0}</span>
+                <span class="summary-pill">来源：${op.request?.source_type === "excel_file" ? "源 Excel" : "PM/API"}</span>
+                <span class="summary-pill">Sheet：${toText(op.analysis?.sheet_name || op.request?.sheet_name)}</span>
+                <span class="summary-pill">目标列：${toText(op.request?.target_column)}</span>
+                ${op.request?.source_type === "excel_file" ? `<span class="summary-pill">源列：${toText(op.analysis?.source_match_column || op.request?.source_match_column)} / ${toText(op.analysis?.source_value_column || op.request?.source_value_column)}</span>` : ""}
+                <span class="summary-pill">更新单元格：${op.result?.summary?.updated_cells ?? 0}</span>
+                <span class="summary-pill">匹配记录：${op.result?.summary?.matched_records ?? 0}</span>
+                <span class="summary-pill">错误数：${op.result?.summary?.error_count ?? 0}</span>
               </div>
 
               <div class="log-disclosures">
                 <details class="log-toggle">
-                  <summary>\u64CD\u4F5C\u8BB0\u5F55</summary>
+                  <summary>操作记录</summary>
                   <div class="block">
                     <pre>${pretty({
                       operation_id: op.operation_id,
@@ -657,7 +657,7 @@
                 </details>
 
                 <details class="log-toggle">
-                  <summary>\u53D8\u66F4\u8BB0\u5F55</summary>
+                  <summary>变更记录</summary>
                   <div class="block">
                     <pre class="scroll-pre">${pretty(op.result?.changes || [])}</pre>
                   </div>
@@ -673,36 +673,36 @@
       detailPanel.innerHTML = `
         <div class="meta-grid">
           <div class="meta-item">
-            <div class="label">\u6587\u4EF6\u540D</div>
+            <div class="label">文件名</div>
             <div class="value">${task.file_name}</div>
           </div>
           <div class="meta-item">
-            <div class="label">\u4EFB\u52A1 ID</div>
+            <div class="label">任务 ID</div>
             <div class="value">${task.task_id}</div>
           </div>
           <div class="meta-item">
-            <div class="label">\u521B\u5EFA\u65F6\u95F4</div>
+            <div class="label">创建时间</div>
             <div class="value">${formatDate(task.created_at)}</div>
           </div>
           <div class="meta-item">
-            <div class="label">\u66F4\u65B0\u65F6\u95F4</div>
+            <div class="label">更新时间</div>
             <div class="value">${formatDate(task.updated_at)}</div>
           </div>
           <div class="meta-item">
-            <div class="label">\u64CD\u4F5C\u6B21\u6570</div>
+            <div class="label">操作次数</div>
             <div class="value">${task.operation_count}</div>
           </div>
           <div class="meta-item">
-            <div class="label">\u5F53\u524D\u6700\u65B0\u5217</div>
+            <div class="label">当前最新列</div>
             <div class="value">${toText(task.latest_target_column)}</div>
           </div>
           <div class="meta-item">
-            <div class="label">\u5F53\u524D\u6587\u4EF6</div>
+            <div class="label">当前文件</div>
             <div class="value">${task.latest_output_file_name}</div>
           </div>
           <div class="meta-item">
-            <div class="label">\u4E0B\u8F7D\u5F53\u524D\u6700\u65B0\u6587\u4EF6</div>
-            <div class="value"><a class="link-button" href="${task.download_url}" target="_blank" rel="noreferrer">\u4E0B\u8F7D\u6700\u65B0\u8868\u683C</a></div>
+            <div class="label">下载当前最新文件</div>
+            <div class="value"><a class="link-button" href="${task.download_url}" target="_blank" rel="noreferrer">下载最新表格</a></div>
           </div>
         </div>
       `;
@@ -710,8 +710,8 @@
 
     async function loadDetail() {
       if (!taskId) {
-        logPanel.innerHTML = `<div class="empty">\u7F3A\u5C11 task_id\uFF0C\u8BF7\u4ECE\u4EFB\u52A1\u5217\u8868\u9875\u8FDB\u5165\u3002</div>`;
-        detailPanel.innerHTML = `<div class="empty">\u7F3A\u5C11 task_id\uFF0C\u8BF7\u4ECE\u4EFB\u52A1\u5217\u8868\u9875\u8FDB\u5165\u3002</div>`;
+        logPanel.innerHTML = `<div class="empty">缺少 task_id，请从任务列表页进入。</div>`;
+        detailPanel.innerHTML = `<div class="empty">缺少 task_id，请从任务列表页进入。</div>`;
         runOperationButton.disabled = true;
         return;
       }
@@ -719,7 +719,7 @@
       const response = await fetch(`/workflow/excel-update/tasks/${encodeURIComponent(taskId)}`);
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(payload.detail || "\u83B7\u53D6\u4EFB\u52A1\u8BE6\u60C5\u5931\u8D25");
+        throw new Error(payload.detail || "获取任务详情失败");
       }
 
       renderLogs(payload);
@@ -734,13 +734,13 @@
       event.preventDefault();
 
       if (!taskId) {
-        setStatus("\u7F3A\u5C11\u4EFB\u52A1 ID\uFF0C\u8BF7\u4ECE\u4EFB\u52A1\u5217\u8868\u9875\u8FDB\u5165\u3002", true);
+        setStatus("缺少任务 ID，请从任务列表页进入。", true);
         return;
       }
 
       runOperationButton.disabled = true;
       refreshDetailButton.disabled = true;
-      setStatus("\u6B63\u5728\u6267\u884C\u66F4\u65B0\u64CD\u4F5C...");
+      setStatus("正在执行更新操作...");
 
       try {
         const formData = new FormData();
@@ -749,7 +749,7 @@
         if (sourceTypeEl.value === "excel_file") {
           const sourceFile = document.getElementById("sourceFile").files?.[0];
           if (!sourceFile) {
-            throw new Error("\u8BF7\u9009\u62E9\u6E90 Excel \u6587\u4EF6");
+            throw new Error("请选择源 Excel 文件");
           }
           formData.append("source_file", sourceFile);
         }
@@ -762,14 +762,14 @@
         });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
-          throw new Error(payload.detail || "\u6267\u884C\u66F4\u65B0\u64CD\u4F5C\u5931\u8D25");
+          throw new Error(payload.detail || "执行更新操作失败");
         }
 
         await loadDetail();
         showRecognitionLog(payload);
-        setStatus(`\u5DF2\u5B8C\u6210\u7B2C ${payload.sequence} \u6B21\u64CD\u4F5C\uFF0C\u66F4\u65B0\u5217\uFF1A${payload.request?.target_column || "\u672A\u6307\u5B9A"}`);
+        setStatus(`已完成第 ${payload.sequence} 次操作，更新列：${payload.request?.target_column || "未指定"}`);
       } catch (error) {
-        setStatus(error.message || "\u6267\u884C\u66F4\u65B0\u64CD\u4F5C\u5931\u8D25", true);
+        setStatus(error.message || "执行更新操作失败", true);
       } finally {
         runOperationButton.disabled = false;
         refreshDetailButton.disabled = false;
@@ -778,13 +778,13 @@
 
     refreshDetailButton.addEventListener("click", async () => {
       refreshDetailButton.disabled = true;
-      setStatus("\u6B63\u5728\u5237\u65B0\u4EFB\u52A1\u8BE6\u60C5...");
+      setStatus("正在刷新任务详情...");
 
       try {
         await loadDetail();
-        setStatus(`\u4EFB\u52A1\u8BE6\u60C5\u5DF2\u5237\u65B0\uFF1A${taskId}`);
+        setStatus(`任务详情已刷新：${taskId}`);
       } catch (error) {
-        setStatus(error.message || "\u5237\u65B0\u4EFB\u52A1\u8BE6\u60C5\u5931\u8D25", true);
+        setStatus(error.message || "刷新任务详情失败", true);
       } finally {
         refreshDetailButton.disabled = false;
       }
@@ -802,9 +802,9 @@
     syncSourceFields();
 
     loadDetail().catch(error => {
-      setStatus(error.message || "\u521D\u59CB\u5316\u9875\u9762\u5931\u8D25", true);
-      logPanel.innerHTML = `<div class="empty">${error.message || "\u521D\u59CB\u5316\u9875\u9762\u5931\u8D25"}</div>`;
-      detailPanel.innerHTML = `<div class="empty">${error.message || "\u521D\u59CB\u5316\u9875\u9762\u5931\u8D25"}</div>`;
+      setStatus(error.message || "初始化页面失败", true);
+      logPanel.innerHTML = `<div class="empty">${error.message || "初始化页面失败"}</div>`;
+      detailPanel.innerHTML = `<div class="empty">${error.message || "初始化页面失败"}</div>`;
     });
   </script>
 </body>

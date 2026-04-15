@@ -2,6 +2,7 @@ import json
 from io import BytesIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from urllib.parse import quote
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -36,6 +37,20 @@ from src.workflow.excel_update.schemas import ExcelUpdateOperationCreate
 from src.workflow.excel_update.task_service import ExcelUpdateTaskService
 
 router = APIRouter()
+
+
+def _build_download_headers(filename: str) -> dict[str, str]:
+    safe_name = Path(filename or "file.xlsx").name
+    ascii_fallback = safe_name.encode("ascii", "ignore").decode("ascii").strip()
+    if not ascii_fallback:
+        ascii_fallback = "file.xlsx"
+    ascii_fallback = ascii_fallback.replace("\\", "_").replace('"', "_")
+    encoded_name = quote(safe_name, safe="")
+    return {
+        "Content-Disposition": (
+            f'attachment; filename="{ascii_fallback}"; filename*=UTF-8\'\'{encoded_name}'
+        )
+    }
 
 
 def _to_system_config_response(item) -> SystemConfigResponse:
@@ -488,9 +503,7 @@ async def download_excel_update_file(task_id: str) -> StreamingResponse:
     return StreamingResponse(
         BytesIO(payload),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": f'attachment; filename="{task.latest_output_file_name}"',
-        },
+        headers=_build_download_headers(task.latest_output_file_name),
     )
 
 
@@ -517,7 +530,5 @@ async def download_excel_update_operation_file(task_id: str, operation_id: str) 
     return StreamingResponse(
         BytesIO(payload),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": f'attachment; filename="{operation.output_file_name}"',
-        },
+        headers=_build_download_headers(operation.output_file_name),
     )

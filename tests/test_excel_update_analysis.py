@@ -1,5 +1,6 @@
 from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 from openpyxl import Workbook, load_workbook
@@ -146,6 +147,27 @@ def test_task_list_and_download_use_latest_output(tmp_path) -> None:
     download_response = client.get(f"/workflow/excel-update/tasks/{task_id}/file")
     assert download_response.status_code == 200
     assert "step_01" in download_response.headers["content-disposition"]
+
+
+def test_task_download_supports_non_ascii_filename(monkeypatch) -> None:
+    class _FakeTaskService:
+        def get_task(self, task_id: str):
+            assert task_id == "demo-task"
+            return SimpleNamespace(latest_output_file_name="清欠表_第1步_三月实际产值.xlsx")
+
+        def get_output_file_content(self, task_id: str) -> bytes:
+            assert task_id == "demo-task"
+            return b"fake-xlsx-payload"
+
+    monkeypatch.setattr("src.api.routes.ExcelUpdateTaskService", lambda: _FakeTaskService())
+
+    response = client.get("/workflow/excel-update/tasks/demo-task/file")
+
+    assert response.status_code == 200
+    content_disposition = response.headers["content-disposition"]
+    assert 'filename="' in content_disposition
+    assert "filename*=UTF-8''" in content_disposition
+    assert "%E6%B8%85%E6%AC%A0%E8%A1%A8" in content_disposition
 
 
 def test_task_supports_excel_file_source_updates(tmp_path) -> None:

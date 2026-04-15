@@ -41,6 +41,12 @@ class SystemConfigResponse(BaseModel):
     updated_at: datetime
 
 
+class FileUploadResponse(BaseModel):
+    object_name: str
+    url: str
+    etag: str
+
+
 class VisionChatRequest(BaseModel):
     prompt: str = Field(..., description="User prompt for vision understanding.")
     image_url: str | None = Field(default=None, description="Public image URL or data URL.")

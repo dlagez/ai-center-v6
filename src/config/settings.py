@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     embedding_model: str = "openai/text-embedding-v3"
     embedding_batch_size: int = 32
     database_url: str | None = None
+    minio_endpoint: str | None = None
+    minio_access_key: str | None = None
+    minio_secret_key: str | None = None
+    minio_secure: bool = False
+    minio_bucket: str | None = None
     sql_agent_dialect: str = "sqlite"
     sql_agent_default_db_path: str | None = None
     sql_agent_max_rows: int = 20

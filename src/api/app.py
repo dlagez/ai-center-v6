@@ -7,11 +7,13 @@ from fastapi.staticfiles import StaticFiles
 from src.api.routes import router
 from src.config.settings import settings
 from src.observability import flush_langfuse
+from src.storage.minio_client import ensure_minio_bucket
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     try:
+        ensure_minio_bucket()
         yield
     finally:
         flush_langfuse()

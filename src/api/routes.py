@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from src.agents.sql.service import SqlAgentService
 from src.api.schemas import (
     AgenticRagRequest,
+    FileUploadResponse,
     IngestRequest,
     SearchRequest,
     SqlAgentRequest,
@@ -28,6 +29,8 @@ from src.rag.agentic.service import AgenticRagService
 from src.rag.service import KnowledgeIngestionService, KnowledgeSearchService
 from src.repositories.system_config_repository import SystemConfigRepository
 from src.services.system_config_service import SystemConfigService
+from src.storage.file_service import get_file_service
+from src.storage.minio_client import MinioConfigError
 from src.workflow.excel_update.analyzer import analyze_excel_update
 from src.workflow.excel_update.schemas import ExcelUpdateOperationCreate
 from src.workflow.excel_update.task_service import ExcelUpdateTaskService
@@ -93,6 +96,25 @@ async def excel_update_task_list_page() -> FileResponse:
     if not page_path.is_file():
         raise HTTPException(status_code=404, detail="Excel update task list page not found")
     return FileResponse(path=page_path, media_type="text/html; charset=utf-8")
+
+
+@router.post("/files/upload", response_model=FileUploadResponse)
+async def upload_file(file: UploadFile = File(...)) -> FileUploadResponse:
+    try:
+        with observe(
+            name="api.files.upload",
+            as_type="span",
+            input={"file_name": file.filename},
+        ):
+            result = get_file_service().upload_file(file)
+    except MinioConfigError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"File upload failed: {exc}") from exc
+    finally:
+        await file.close()
+
+    return FileUploadResponse(**result)
 
 
 @router.post("/agents/sql")

@@ -27,7 +27,12 @@ class ExcelUpdateService:
         parsed_template = self.parser(request)
         records = self.fetcher(request)
         changes, errors, unmatched_keys = self.updater(request, parsed_template, records)
-        output_path = export_updated_workbook(request, parsed_template, resolve_output_path(request))
+        output_path = export_updated_workbook(
+            request,
+            parsed_template,
+            changes,
+            resolve_output_path(request),
+        )
 
         matched_records = max(len(records) - len(unmatched_keys), 0)
         summary = ExcelUpdateSummary(

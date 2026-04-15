@@ -1,4 +1,5 @@
 from pathlib import Path
+from zipfile import ZIP_DEFLATED, ZipFile
 
 from openpyxl import Workbook, load_workbook
 
@@ -105,3 +106,71 @@ def test_excel_update_service_supports_multiline_target_header(tmp_path) -> None
     worksheet = workbook["qingqian"]
     assert worksheet["D5"].value == 20
     assert worksheet["D6"].value == 30
+
+
+def test_excel_update_service_preserves_unmodified_zip_parts(tmp_path) -> None:
+    excel_path = tmp_path / "source_with_parts.xlsx"
+    output_path = tmp_path / "updated_with_parts.xlsx"
+    _build_sample_excel(excel_path)
+
+    augmented_path = tmp_path / "augmented.xlsx"
+    extra_parts = {
+        "xl/media/image99.png": b"fake-image-payload",
+        "xl/cellimages.xml": b"<cellImages/>",
+        "xl/_rels/cellimages.xml.rels": b"<Relationships/>",
+        "xl/calcChain.xml": b"<calcChain/>",
+    }
+    with ZipFile(excel_path) as source_archive, ZipFile(augmented_path, "w") as target_archive:
+        for info in source_archive.infolist():
+            target_archive.writestr(info.filename, source_archive.read(info.filename), compress_type=info.compress_type)
+        for name, payload in extra_parts.items():
+            target_archive.writestr(name, payload, compress_type=ZIP_DEFLATED)
+
+    request = ExcelUpdateRequest(
+        excel_path=str(augmented_path),
+        sheet_name="qingqian",
+        match_column="项目编号",
+        match_field="project_no",
+        target_column="3月实际产值",
+        output_path=str(output_path),
+    )
+
+    ExcelUpdateService().run(request)
+
+    with ZipFile(output_path) as archive:
+        for name, payload in extra_parts.items():
+            assert archive.read(name) == payload
+
+
+def test_excel_update_service_only_rewrites_target_sheet_xml(tmp_path) -> None:
+    excel_path = tmp_path / "source_two_sheets.xlsx"
+    output_path = tmp_path / "updated_two_sheets.xlsx"
+
+    workbook = Workbook()
+    target_sheet = workbook.active
+    target_sheet.title = "qingqian"
+    target_sheet.append(["项目编号", "项目名称", "3月实际产值"])
+    target_sheet.append(["HKZC-N-YW-2021-001", "项目A", None])
+
+    untouched_sheet = workbook.create_sheet("summary")
+    untouched_sheet["A1"] = "keep-me"
+    workbook.save(excel_path)
+
+    with ZipFile(excel_path) as archive:
+        before_summary_xml = archive.read("xl/worksheets/sheet2.xml")
+
+    request = ExcelUpdateRequest(
+        excel_path=str(excel_path),
+        sheet_name="qingqian",
+        match_column="项目编号",
+        match_field="project_no",
+        target_column="3月实际产值",
+        output_path=str(output_path),
+    )
+
+    ExcelUpdateService().run(request)
+
+    with ZipFile(output_path) as archive:
+        after_summary_xml = archive.read("xl/worksheets/sheet2.xml")
+
+    assert before_summary_xml == after_summary_xml

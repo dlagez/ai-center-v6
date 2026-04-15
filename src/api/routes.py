@@ -1,10 +1,11 @@
 import json
-import shutil
+from io import BytesIO
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from src.agents.sql.service import SqlAgentService
@@ -20,7 +21,6 @@ from src.api.schemas import (
     VideoInspectionRequest,
     VisionChatRequest,
 )
-from src.config.settings import settings
 from src.db.session import get_db
 from src.media.service import VideoInspectionService
 from src.models.llm import vision_completion
@@ -64,22 +64,27 @@ def _parse_json_form_field(value: str | None, field_name: str) -> list[dict]:
 
 async def _save_uploaded_excel(file: UploadFile) -> tuple[str, str]:
     original_name = file.filename or "uploaded.xlsx"
-    uploads_dir = Path(settings.excel_update_output_dir).expanduser().resolve() / "_uploads"
-    uploads_dir.mkdir(parents=True, exist_ok=True)
-
-    suffix = Path(original_name).suffix or ".xlsx"
-    saved_path = uploads_dir / f"{uuid4().hex}{suffix}"
-    with saved_path.open("wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    object_name = f"excel-update/uploads/{uuid4().hex}_{Path(original_name).name}"
+    result = get_file_service().upload_file(file, object_name=object_name)
     await file.close()
-
-    return str(saved_path), original_name
+    return result["object_name"], original_name
 
 
 async def _save_optional_uploaded_excel(file: UploadFile | None) -> tuple[str | None, str | None]:
     if file is None:
         return None, None
     return await _save_uploaded_excel(file)
+
+
+def _download_excel_to_tempfile(object_name: str, suffix: str = ".xlsx") -> str:
+    payload = get_file_service().download_file(object_name)
+    temp_file = NamedTemporaryFile(delete=False, suffix=suffix)
+    try:
+        temp_file.write(payload)
+        temp_file.flush()
+    finally:
+        temp_file.close()
+    return temp_file.name
 
 
 @router.get("/pages/excel-update")
@@ -421,20 +426,25 @@ async def analyze_excel_update_task(
     file: UploadFile = File(...),
     user_prompt: str = Form(...),
 ) -> dict:
+    temp_path: str | None = None
     try:
         saved_excel_path, _ = await _save_uploaded_excel(file)
+        temp_path = _download_excel_to_tempfile(saved_excel_path)
         with observe(
             name="api.excel_update.analysis",
             as_type="generation",
             input={"excel_path": saved_excel_path, "user_prompt": user_prompt},
         ):
-            result = analyze_excel_update(saved_excel_path, user_prompt)
+            result = analyze_excel_update(temp_path, user_prompt)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Excel analysis failed: {exc}") from exc
+    finally:
+        if temp_path:
+            Path(temp_path).unlink(missing_ok=True)
 
     return result.model_dump(mode="json")
 
@@ -459,7 +469,7 @@ async def get_excel_update_task(task_id: str) -> dict:
 
 
 @router.get("/workflow/excel-update/tasks/{task_id}/file")
-async def download_excel_update_file(task_id: str) -> FileResponse:
+async def download_excel_update_file(task_id: str) -> StreamingResponse:
     task_service = ExcelUpdateTaskService()
 
     try:
@@ -469,21 +479,23 @@ async def download_excel_update_file(task_id: str) -> FileResponse:
             input={"task_id": task_id},
         ):
             task = task_service.get_task(task_id)
-            output_path = task_service.get_output_file_path(task_id)
+            payload = task_service.get_output_file_content(task_id)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Excel update file download failed: {exc}") from exc
 
-    return FileResponse(
-        path=output_path,
-        filename=task.latest_output_file_name,
+    return StreamingResponse(
+        BytesIO(payload),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{task.latest_output_file_name}"',
+        },
     )
 
 
 @router.get("/workflow/excel-update/tasks/{task_id}/operations/{operation_id}/file")
-async def download_excel_update_operation_file(task_id: str, operation_id: str) -> FileResponse:
+async def download_excel_update_operation_file(task_id: str, operation_id: str) -> StreamingResponse:
     task_service = ExcelUpdateTaskService()
 
     try:
@@ -496,14 +508,16 @@ async def download_excel_update_operation_file(task_id: str, operation_id: str) 
             operation = next((item for item in task.operations if item.operation_id == operation_id), None)
             if operation is None:
                 raise FileNotFoundError(f"Excel update operation not found: {operation_id}")
-            output_path = task_service.get_operation_output_file_path(task_id, operation_id)
+            payload = task_service.get_operation_output_file_content(task_id, operation_id)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Excel update operation file download failed: {exc}") from exc
 
-    return FileResponse(
-        path=output_path,
-        filename=operation.output_file_name,
+    return StreamingResponse(
+        BytesIO(payload),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{operation.output_file_name}"',
+        },
     )

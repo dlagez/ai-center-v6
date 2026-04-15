@@ -30,6 +30,7 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 Copy-Item .env.example .env
+source .venv/bin/activate
 uvicorn src.api.app:app --reload
 ```
 

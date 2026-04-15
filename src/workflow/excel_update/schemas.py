@@ -10,7 +10,7 @@ class ExcelUpdateQueryCondition(BaseModel):
 
 
 class ExcelUpdateRequest(BaseModel):
-    excel_path: str = Field(..., description="Local Excel file path.")
+    excel_path: str = Field(..., description="Excel file reference used by the workflow.")
     source_type: str = Field(
         default="pm_api",
         description="Data source type. Supported values: pm_api, excel_file.",
@@ -34,7 +34,7 @@ class ExcelUpdateRequest(BaseModel):
     )
     source_excel_path: str | None = Field(
         default=None,
-        description="Optional source Excel file path when using excel_file mode.",
+        description="Optional source Excel file reference when using excel_file mode.",
     )
     source_sheet_name: str | None = Field(default=None, description="Optional source sheet name.")
     source_match_column: str = Field(
@@ -51,7 +51,7 @@ class ExcelUpdateRequest(BaseModel):
     )
     output_path: str | None = Field(
         default=None,
-        description="Optional output path for the updated Excel file.",
+        description="Optional output file reference for the updated Excel file.",
     )
     overwrite_existing: bool = Field(
         default=True,
@@ -85,8 +85,8 @@ class ExcelUpdateSummary(BaseModel):
 
 
 class ExcelUpdateResult(BaseModel):
-    excel_path: str = Field(..., description="Original Excel file path.")
-    output_path: str | None = Field(default=None, description="Updated Excel file path when produced.")
+    excel_path: str = Field(..., description="Original Excel file reference.")
+    output_path: str | None = Field(default=None, description="Updated Excel file reference when produced.")
     sheet_name: str | None = Field(default=None, description="Resolved target sheet name.")
     match_column: str = Field(..., description="Excel column header used for matching.")
     match_field: str = Field(..., description="Business record field used for matching.")

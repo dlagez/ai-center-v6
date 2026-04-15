@@ -1,10 +1,10 @@
-import shutil
 from datetime import datetime
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from uuid import uuid4
 
-from src.config.settings import settings
 from src.db.session import SessionLocal, get_engine
+from src.storage.file_service import get_file_service
 from src.workflow.excel_update.analyzer import analyze_excel_update
 from src.workflow.excel_update.models import ExcelUpdateOperation, ExcelUpdateTask
 from src.workflow.excel_update.repository import ExcelUpdateTaskRepository
@@ -23,19 +23,13 @@ from src.workflow.excel_update.service import ExcelUpdateService
 class ExcelUpdateTaskService:
     def __init__(self, workflow_service: ExcelUpdateService | None = None) -> None:
         self.workflow_service = workflow_service or ExcelUpdateService()
-        self.base_dir = Path(settings.excel_update_output_dir).expanduser().resolve()
-        self.base_dir.mkdir(parents=True, exist_ok=True)
+        self.file_service = get_file_service()
         get_engine()
 
     def create_task(self, source_excel_path: str, uploaded_file_name: str) -> ExcelUpdateTaskDetail:
         task_id = f"excel_update_{uuid4().hex}"
         now = datetime.now()
-        task_dir = self.base_dir / task_id
-        task_dir.mkdir(parents=True, exist_ok=True)
-
-        source_path = Path(source_excel_path)
-        stored_source_path = task_dir / self._build_source_name(uploaded_file_name)
-        shutil.copy2(source_path, stored_source_path)
+        stored_source_path = source_excel_path
 
         task = ExcelUpdateTaskDetail(
             task_id=task_id,
@@ -71,44 +65,77 @@ class ExcelUpdateTaskService:
 
     def run_operation(self, task_id: str, operation: ExcelUpdateOperationCreate) -> ExcelUpdateOperationResult:
         task = self.get_task(task_id)
-        analysis = self._resolve_analysis(task.current_excel_path, operation)
+        with TemporaryDirectory(prefix=f"{task_id}_") as tmp_dir:
+            working_dir = Path(tmp_dir)
+            task_excel_path = self._download_object_to_path(
+                task.current_excel_path,
+                working_dir / self._build_source_name(task.file_name),
+            )
+            source_excel_path = self._download_optional_object_to_path(
+                operation.source_excel_path,
+                working_dir / self._build_source_name("source.xlsx"),
+            )
 
-        target_column = operation.target_column or (analysis.target_column if analysis else None)
-        if not target_column:
-            raise ValueError("target_column is required")
+            local_operation = operation.model_copy(update={"source_excel_path": source_excel_path})
+            analysis = self._resolve_analysis(str(task_excel_path), local_operation)
 
-        request = ExcelUpdateRequest(
-            excel_path=task.current_excel_path,
-            source_type=operation.source_type,
-            user_prompt=operation.user_prompt,
-            sheet_name=operation.sheet_name or (analysis.sheet_name if analysis else None),
-            match_column=operation.match_column or (analysis.match_column if analysis else "项目编号"),
-            match_field=operation.match_field or (analysis.match_field if analysis else "project_no"),
-            source_excel_path=operation.source_excel_path,
-            source_sheet_name=operation.source_sheet_name or (analysis.source_sheet_name if analysis else None),
-            source_match_column=operation.source_match_column or (analysis.source_match_column if analysis else None) or "项目编号",
-            source_value_column=operation.source_value_column or (analysis.source_value_column if analysis else None),
-            target_column=target_column,
-            query_conditions=operation.query_conditions or (analysis.query_conditions if analysis else []),
-            output_path=str(
-                self.base_dir
-                / task_id
-                / self._build_operation_output_name(task.file_name, len(task.operations) + 1, target_column)
-            ),
-            overwrite_existing=operation.overwrite_existing,
-            operator=operation.operator,
-        )
+            target_column = operation.target_column or (analysis.target_column if analysis else None)
+            if not target_column:
+                raise ValueError("target_column is required")
 
-        result = self.workflow_service.run(request)
+            output_file_name = self._build_operation_output_name(
+                task.file_name,
+                len(task.operations) + 1,
+                target_column,
+            )
+            local_output_path = working_dir / output_file_name
+
+            request = ExcelUpdateRequest(
+                excel_path=str(task_excel_path),
+                source_type=operation.source_type,
+                user_prompt=operation.user_prompt,
+                sheet_name=operation.sheet_name or (analysis.sheet_name if analysis else None),
+                match_column=operation.match_column or (analysis.match_column if analysis else "项目编号"),
+                match_field=operation.match_field or (analysis.match_field if analysis else "project_no"),
+                source_excel_path=source_excel_path,
+                source_sheet_name=operation.source_sheet_name or (analysis.source_sheet_name if analysis else None),
+                source_match_column=operation.source_match_column or (analysis.source_match_column if analysis else None) or "项目编号",
+                source_value_column=operation.source_value_column or (analysis.source_value_column if analysis else None),
+                target_column=target_column,
+                query_conditions=operation.query_conditions or (analysis.query_conditions if analysis else []),
+                output_path=str(local_output_path),
+                overwrite_existing=operation.overwrite_existing,
+                operator=operation.operator,
+            )
+
+            result = self.workflow_service.run(request)
+            result_object_name = self._upload_local_file(
+                local_output_path,
+                self._build_storage_object_name(task_id, output_file_name),
+            )
+            persisted_request = request.model_copy(
+                update={
+                    "excel_path": task.current_excel_path,
+                    "source_excel_path": operation.source_excel_path,
+                    "output_path": result_object_name,
+                }
+            )
+            result = result.model_copy(
+                update={
+                    "excel_path": task.current_excel_path,
+                    "output_path": result_object_name,
+                }
+            )
+
         operation_id = f"operation_{uuid4().hex}"
         operation_result = ExcelUpdateOperationResult(
             operation_id=operation_id,
             sequence=len(task.operations) + 1,
             created_at=datetime.now(),
-            output_file_name=Path(result.output_path or "").name,
+            output_file_name=output_file_name,
             download_url=f"/workflow/excel-update/tasks/{task_id}/operations/{operation_id}/file",
             detail_url=f"/workflow/excel-update/tasks/{task_id}",
-            request=request,
+            request=persisted_request,
             analysis=analysis,
             result=result,
         )
@@ -133,25 +160,21 @@ class ExcelUpdateTaskService:
             repository.add_operation(task_entity, operation_entity)
         return operation_result
 
-    def get_output_file_path(self, task_id: str) -> Path:
+    def get_output_file_content(self, task_id: str) -> bytes:
         task = self.get_task(task_id)
-        output_path = Path(task.current_excel_path)
-        if not output_path.is_file():
-            raise FileNotFoundError(f"Excel update output file not found for task: {task_id}")
-        return output_path
+        return self._download_object(task.current_excel_path)
 
-    def get_operation_output_file_path(self, task_id: str, operation_id: str) -> Path:
+    def get_operation_output_file_content(self, task_id: str, operation_id: str) -> bytes:
         task = self.get_task(task_id)
         operation = next((item for item in task.operations if item.operation_id == operation_id), None)
         if operation is None:
             raise FileNotFoundError(f"Excel update operation not found: {operation_id}")
-
-        output_path = Path(operation.result.output_path or "")
-        if not output_path.is_file():
+        output_object_name = operation.result.output_path or ""
+        if not output_object_name:
             raise FileNotFoundError(
                 f"Excel update output file not found for task: {task_id}, operation: {operation_id}"
             )
-        return output_path
+        return self._download_object(output_object_name)
 
     def _resolve_analysis(
         self,
@@ -195,6 +218,35 @@ class ExcelUpdateTaskService:
         suffix = source.suffix or ".xlsx"
         safe_target = self._sanitize_name(target_column)
         return f"{source.stem}_step_{sequence:02d}_{safe_target}{suffix}"
+
+    @staticmethod
+    def _build_storage_object_name(task_id: str, file_name: str) -> str:
+        return f"excel-update/{task_id}/{Path(file_name).name}"
+
+    def _download_object(self, object_name: str) -> bytes:
+        try:
+            return self.file_service.download_file(object_name)
+        except Exception as exc:
+            raise FileNotFoundError(f"Excel update file not found in storage: {object_name}") from exc
+
+    def _download_object_to_path(self, object_name: str, destination: Path) -> Path:
+        payload = self._download_object(object_name)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(payload)
+        return destination
+
+    def _download_optional_object_to_path(self, object_name: str | None, destination: Path) -> str | None:
+        if not object_name:
+            return None
+        return str(self._download_object_to_path(object_name, destination))
+
+    def _upload_local_file(self, file_path: Path, object_name: str) -> str:
+        with file_path.open("rb") as stream:
+            self.file_service.upload_file(
+                stream,
+                object_name=object_name,
+            )
+        return object_name
 
     @staticmethod
     def _to_task_entity(payload: ExcelUpdateTaskDetail) -> ExcelUpdateTask:

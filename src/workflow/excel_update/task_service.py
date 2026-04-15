@@ -30,6 +30,7 @@ class ExcelUpdateTaskService:
         task_id = f"excel_update_{uuid4().hex}"
         now = datetime.now()
         stored_source_path = source_excel_path
+        stored_source_name = self._build_source_name(uploaded_file_name)
 
         task = ExcelUpdateTaskDetail(
             task_id=task_id,
@@ -38,7 +39,7 @@ class ExcelUpdateTaskService:
             updated_at=now,
             operation_count=0,
             latest_target_column=None,
-            latest_output_file_name=stored_source_path.name,
+            latest_output_file_name=stored_source_name,
             detail_url=f"/workflow/excel-update/tasks/{task_id}",
             download_url=f"/workflow/excel-update/tasks/{task_id}/file",
             source_excel_path=str(stored_source_path),

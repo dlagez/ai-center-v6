@@ -160,6 +160,12 @@ Agentic RAG 问答：
 .venv\Scripts\python scripts\agentic_rag_answer.py "这套方案的基本思路是什么？" --limit 5
 ```
 
+Excel 回写安全评估：
+
+```powershell
+.venv\Scripts\python scripts\assess_excel_roundtrip.py original.xlsx roundtrip.xlsx
+```
+
 ## 后续建议
 
 - 在 `src/graphs/` 中实现 LangGraph 工作流

@@ -1,5 +1,6 @@
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi.testclient import TestClient
 from openpyxl import Workbook, load_workbook
@@ -185,3 +186,31 @@ def test_task_supports_excel_file_source_updates(tmp_path) -> None:
     worksheet = workbook["软件项目清欠表_收付款"]
     assert worksheet["E3"].value == 559336.13
     assert worksheet["E4"].value == 223344.55
+
+
+def test_operation_file_download_supports_non_ascii_filename(tmp_path) -> None:
+    excel_path = tmp_path / "analysis.xlsx"
+    _build_target_excel(excel_path)
+
+    with excel_path.open("rb") as file_obj:
+        create_response = client.post(
+            "/workflow/excel-update/tasks",
+            files={"file": ("清欠表.xlsx", file_obj, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        )
+
+    assert create_response.status_code == 200
+    task_id = create_response.json()["task_id"]
+
+    operation_response = client.post(
+        f"/workflow/excel-update/tasks/{task_id}/operations",
+        data={"user_prompt": "把这张清欠表 3 月实际产值更新一下"},
+    )
+    assert operation_response.status_code == 200
+    download_url = operation_response.json()["download_url"]
+
+    download_response = client.get(download_url)
+
+    assert download_response.status_code == 200
+    content_disposition = download_response.headers["content-disposition"]
+    assert 'filename="___.xlsx"' in content_disposition
+    assert f"filename*=UTF-8''{quote('清欠表_step_01_3月实际产值.xlsx', safe='')}" in content_disposition

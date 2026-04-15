@@ -2,6 +2,7 @@ import json
 from io import BytesIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from urllib.parse import quote
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -85,6 +86,21 @@ def _download_excel_to_tempfile(object_name: str, suffix: str = ".xlsx") -> str:
     finally:
         temp_file.close()
     return temp_file.name
+
+
+def _build_attachment_headers(file_name: str) -> dict[str, str]:
+    normalized_name = Path(file_name).name or "download.xlsx"
+    ascii_fallback = "".join(
+        char if ord(char) < 128 and char not in {'"', "\\"} else "_"
+        for char in normalized_name
+    ) or "download.xlsx"
+    encoded_name = quote(normalized_name, safe="")
+    return {
+        "Content-Disposition": (
+            f'attachment; filename="{ascii_fallback}"; '
+            f"filename*=UTF-8''{encoded_name}"
+        ),
+    }
 
 
 @router.get("/pages/excel-update")
@@ -488,9 +504,7 @@ async def download_excel_update_file(task_id: str) -> StreamingResponse:
     return StreamingResponse(
         BytesIO(payload),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": f'attachment; filename="{task.latest_output_file_name}"',
-        },
+        headers=_build_attachment_headers(task.latest_output_file_name),
     )
 
 
@@ -517,7 +531,5 @@ async def download_excel_update_operation_file(task_id: str, operation_id: str) 
     return StreamingResponse(
         BytesIO(payload),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": f'attachment; filename="{operation.output_file_name}"',
-        },
+        headers=_build_attachment_headers(operation.output_file_name),
     )

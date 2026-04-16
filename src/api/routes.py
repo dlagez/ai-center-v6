@@ -1,12 +1,4 @@
-import json
-from io import BytesIO
-from pathlib import Path
-from tempfile import NamedTemporaryFile
-from urllib.parse import quote
-from uuid import uuid4
-
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from src.agents.sql.service import SqlAgentService
@@ -32,27 +24,10 @@ from src.repositories.system_config_repository import SystemConfigRepository
 from src.services.system_config_service import SystemConfigService
 from src.storage.file_service import get_file_service
 from src.storage.minio_client import MinioConfigError
-from src.workflow.excel_update.analyzer import analyze_excel_update
-from src.workflow.excel_update.schemas import ExcelUpdateOperationCreate
-from src.workflow.excel_update.task_service import ExcelUpdateTaskService
+from src.api.excel_update_routes import router as excel_update_router
 
 router = APIRouter()
-
-
-@router.get("/pages/excel-update")
-async def excel_update_page() -> FileResponse:
-    page_path = Path(__file__).resolve().parent / "static" / "excel-update.html"
-    if not page_path.is_file():
-        raise HTTPException(status_code=404, detail="Excel update page not found")
-    return FileResponse(path=page_path, media_type="text/html; charset=utf-8")
-
-
-@router.get("/pages/excel-update/tasks")
-async def excel_update_task_list_page() -> FileResponse:
-    page_path = Path(__file__).resolve().parent / "static" / "excel-update-tasks.html"
-    if not page_path.is_file():
-        raise HTTPException(status_code=404, detail="Excel update task list page not found")
-    return FileResponse(path=page_path, media_type="text/html; charset=utf-8")
+router.include_router(excel_update_router)
 
 
 @router.post("/files/upload", response_model=FileUploadResponse)
@@ -265,3 +240,13 @@ async def inspect_video(request: VideoInspectionRequest) -> dict:
         raise HTTPException(status_code=500, detail=f"Video inspection failed: {exc}") from exc
 
     return result.model_dump()
+
+
+def _to_system_config_response(item) -> SystemConfigResponse:
+    return SystemConfigResponse(
+        id=item.id,
+        key=item.key,
+        value=item.value,
+        created_at=item.created_at,
+        updated_at=item.updated_at,
+    )

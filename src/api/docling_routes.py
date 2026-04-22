@@ -6,6 +6,7 @@ from src.db.session import get_db
 from src.parser.parser import DoclingBlockPreview, DoclingPagePreview
 from src.parser.service import DoclingParserService
 from src.repositories.docling_parse_result_repository import DoclingParseResultRepository
+from src.repositories.docling_parse_task_repository import DoclingParseTaskRepository
 from src.repositories.uploaded_file_repository import UploadedFileRepository
 
 router = APIRouter()
@@ -32,6 +33,7 @@ async def parse_docling_pdf(
 ) -> DoclingParseResponse:
     service = DoclingParserService(
         UploadedFileRepository(db),
+        DoclingParseTaskRepository(db),
         DoclingParseResultRepository(db),
     )
 

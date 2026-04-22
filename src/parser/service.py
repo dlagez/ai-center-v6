@@ -1,11 +1,14 @@
+from datetime import datetime
 import json
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from uuid import uuid4
 
 from src.db.models.docling_parse_result import DoclingParseResult
+from src.db.models.docling_parse_task import DoclingParseTask
 from src.parser.parser import DoclingBlockPreview, DoclingPagePreview, DoclingParser
 from src.repositories.docling_parse_result_repository import DoclingParseResultRepository
+from src.repositories.docling_parse_task_repository import DoclingParseTaskRepository
 from src.repositories.uploaded_file_repository import UploadedFileRepository
 from src.services.uploaded_file_service import UploadedFileService
 from src.storage.file_service import get_file_service
@@ -35,24 +38,38 @@ class DoclingParseServiceResult:
 
 
 class DoclingParserService:
+    batch_size = 10
+
     def __init__(
         self,
         uploaded_file_repository: UploadedFileRepository,
+        docling_parse_task_repository: DoclingParseTaskRepository,
         docling_parse_result_repository: DoclingParseResultRepository,
         parser: DoclingParser | None = None,
     ) -> None:
         self.uploaded_file_service = UploadedFileService(uploaded_file_repository)
+        self.docling_parse_task_repository = docling_parse_task_repository
         self.docling_parse_result_repository = docling_parse_result_repository
         self.parser = parser or DoclingParser()
 
     def parse_pdf_file(self, file_id: str) -> DoclingParseServiceResult:
         file_record = self.uploaded_file_service.get_pdf_file(file_id)
-        cached = self.docling_parse_result_repository.get_by_file_id(file_id)
-        if cached and cached.parse_status == "success" and cached.result_json:
-            return self._build_cached_response(file_record.file_id, file_record.file_name, cached)
+        task = self.docling_parse_task_repository.get_latest_by_file_id(file_id)
+        if task and task.status in {"success", "partial_success"}:
+            cached_results = self.docling_parse_result_repository.list_by_task_id(task.task_id)
+            if cached_results and all(item.result_json for item in cached_results):
+                return self._build_cached_response(file_record.file_id, file_record.file_name, cached_results)
 
         temp_path = None
+        task = None
         try:
+            task = self._ensure_task_entity(file_id)
+            task.status = "running"
+            task.error_message = None
+            task.started_at = task.started_at or datetime.now()
+            task.batch_size = self.batch_size
+            self._save_task(task)
+
             payload = get_file_service().download_file(file_record.object_name)
             suffix = Path(file_record.file_name).suffix or ".pdf"
             temp_file = NamedTemporaryFile(delete=False, suffix=suffix)
@@ -61,35 +78,76 @@ class DoclingParserService:
             temp_file.close()
             temp_path = temp_file.name
 
-            parsed_document = self.parser.parse(temp_path)
-            parsed = self.parser.parse_visualized_pdf(temp_path)
-            page_count = parsed["summary"].get("total_pages", 0)
+            batch_results: list[dict] = []
+            batch_page_entities: list[DoclingParseResult] = []
+            start_page = 1
+            batch_no = 1
 
-            cached = self._ensure_cache_entity(cached, file_id)
-            cached.parse_status = "success"
-            cached.error_message = None
-            cached.result_json = json.dumps(parsed["result"], ensure_ascii=False)
-            cached.markdown = parsed_document.markdown
-            cached.page_count = page_count
-            self._save_cache(cached)
+            while True:
+                end_page = start_page + self.batch_size - 1
+                page_range = (start_page, end_page)
+                parsed_document = self.parser.parse(temp_path, page_range=page_range)
+                parsed = self.parser.parse_visualized_pdf(temp_path, page_range=page_range)
+                parsed_pages = parsed.get("pages", [])
+                if not parsed_pages:
+                    break
 
+                batch_results.append(parsed)
+                batch_page_entities.extend(
+                    self._build_page_results(
+                        task=task,
+                        file_id=file_id,
+                        parsed=parsed,
+                        markdown=parsed_document.markdown,
+                        batch_no=batch_no,
+                    )
+                )
+
+                max_page_no = max(page.page_no for page in parsed_pages)
+                task.current_batch_no = batch_no
+                task.total_pages = max(task.total_pages, max_page_no)
+                task.parsed_pages = len(batch_page_entities)
+                task.progress = 0.00
+                self._save_task(task)
+
+                if len(parsed_pages) < self.batch_size:
+                    break
+
+                start_page = max_page_no + 1
+                batch_no += 1
+
+            if not batch_page_entities:
+                raise ValueError("Docling did not return any parsed pages")
+
+            self.docling_parse_result_repository.create_many(batch_page_entities)
+
+            task.total_pages = max(item.page_no for item in batch_page_entities)
+            task.parsed_pages = len(batch_page_entities)
+            task.failed_pages = 0
+            task.progress = 100.00
+            task.current_batch_no = batch_no
+            task.status = "success"
+            task.finished_at = datetime.now()
+            self._save_task(task)
+
+            merged_result = self._merge_visualized_batches(batch_results)
+            visualized = self.parser.build_visualized_payload_from_dict(merged_result)
             return DoclingParseServiceResult(
                 file_id=file_record.file_id,
                 file_name=file_record.file_name,
                 status="success",
-                summary=parsed["summary"],
-                pages=parsed["pages"],
-                blocks=parsed["blocks"],
-                result=parsed["result"],
+                summary=visualized["summary"],
+                pages=visualized["pages"],
+                blocks=visualized["blocks"],
+                result=merged_result,
             )
         except Exception as exc:
-            cached = self._ensure_cache_entity(cached, file_id)
-            cached.parse_status = "failed"
-            cached.error_message = str(exc)
-            cached.result_json = None
-            cached.markdown = None
-            cached.page_count = 0
-            self._save_cache(cached)
+            if task is None:
+                task = self._ensure_task_entity(file_id)
+            task.status = "failed"
+            task.error_message = str(exc)
+            task.finished_at = datetime.now()
+            self._save_task(task)
             return DoclingParseServiceResult(
                 file_id=file_record.file_id,
                 file_name=file_record.file_name,
@@ -104,10 +162,10 @@ class DoclingParserService:
         self,
         file_id: str,
         file_name: str,
-        cached: DoclingParseResult,
+        cached_results: list[DoclingParseResult],
     ) -> DoclingParseServiceResult:
-        result = json.loads(cached.result_json or "{}")
-        visualized = self.parser.build_visualized_payload_from_dict(result)
+        merged_result = self._merge_page_results(cached_results)
+        visualized = self.parser.build_visualized_payload_from_dict(merged_result)
         return DoclingParseServiceResult(
             file_id=file_id,
             file_name=file_name,
@@ -115,25 +173,150 @@ class DoclingParserService:
             summary=visualized["summary"],
             pages=visualized["pages"],
             blocks=visualized["blocks"],
-            result=visualized["result"],
+            result=merged_result,
         )
 
     @staticmethod
-    def _ensure_cache_entity(
-        cached: DoclingParseResult | None,
-        file_id: str,
-    ) -> DoclingParseResult:
-        if cached is not None:
-            return cached
-        return DoclingParseResult(
-            parse_id=uuid4().hex,
+    def _ensure_task_entity(file_id: str) -> DoclingParseTask:
+        return DoclingParseTask(
+            task_id=uuid4().hex,
             file_id=file_id,
             parser_name="docling",
             parser_version="docling_visual_v1",
         )
 
-    def _save_cache(self, cached: DoclingParseResult) -> None:
-        if cached.id:
-            self.docling_parse_result_repository.update(cached)
+    def _save_task(self, task: DoclingParseTask) -> None:
+        if task.id:
+            self.docling_parse_task_repository.update(task)
         else:
-            self.docling_parse_result_repository.create(cached)
+            self.docling_parse_task_repository.create(task)
+
+    @staticmethod
+    def _build_page_results(
+        task: DoclingParseTask,
+        file_id: str,
+        parsed: dict,
+        markdown: str,
+        batch_no: int,
+    ) -> list[DoclingParseResult]:
+        blocks = parsed.get("blocks", [])
+        pages = parsed.get("pages", [])
+        raw_result = parsed.get("result") or {}
+        raw_pages = raw_result.get("pages") or {}
+        page_markdowns = markdown.split("\f") if markdown else []
+        entities: list[DoclingParseResult] = []
+
+        for index, page in enumerate(pages):
+            page_no = page.page_no
+            page_blocks = [block for block in blocks if block.page_no == page_no]
+            page_nodes = _collect_raw_nodes_for_page(raw_result, page_no)
+            page_payload = {
+                "pages": {str(page_no): raw_pages.get(str(page_no), {})},
+                "key_value_items": [],
+                "body": None,
+                "furniture": None,
+                "groups": [],
+                "page_nodes": page_nodes,
+            }
+            page_markdown = page_markdowns[index] if index < len(page_markdowns) else None
+            entities.append(
+                DoclingParseResult(
+                    result_id=uuid4().hex,
+                    task_id=task.task_id,
+                    file_id=file_id,
+                    batch_no=batch_no,
+                    page_no=page_no,
+                    parser_name=task.parser_name,
+                    parser_version=task.parser_version,
+                    parse_status="success",
+                    error_message=None,
+                    result_json=json.dumps(page_payload, ensure_ascii=False),
+                    markdown=page_markdown,
+                    block_count=len(page_blocks),
+                )
+            )
+
+        return entities
+
+    @staticmethod
+    def _merge_page_results(results: list[DoclingParseResult]) -> dict:
+        merged_pages: dict[str, dict] = {}
+        merged_blocks: list[dict] = []
+
+        for item in results:
+            payload = json.loads(item.result_json or "{}")
+            pages = payload.get("pages") or {}
+            merged_pages.update(pages)
+            merged_blocks.extend(payload.get("page_nodes") or [])
+
+        return {
+            "pages": merged_pages,
+            "key_value_items": [],
+            "body": None,
+            "furniture": None,
+            "groups": [],
+            "page_nodes": merged_blocks,
+        }
+
+    @staticmethod
+    def _merge_visualized_batches(batches: list[dict]) -> dict:
+        merged_pages: dict[str, dict] = {}
+        merged_nodes: list[dict] = []
+
+        for batch in batches:
+            raw_result = batch.get("result") or {}
+            merged_pages.update(raw_result.get("pages") or {})
+            merged_nodes.extend(_collect_raw_nodes_for_pages(raw_result))
+
+        return {
+            "pages": merged_pages,
+            "key_value_items": [],
+            "body": None,
+            "furniture": None,
+            "groups": [],
+            "page_nodes": merged_nodes,
+        }
+
+
+def _collect_raw_nodes_for_page(payload, page_no: int) -> list[dict]:
+    nodes: list[dict] = []
+
+    if isinstance(payload, dict):
+        prov_list = payload.get("prov")
+        if not isinstance(prov_list, list) and prov_list is not None:
+            prov_list = [prov_list]
+
+        if prov_list:
+            first_prov = prov_list[0] or {}
+            if first_prov.get("page_no") == page_no and first_prov.get("bbox") is not None:
+                nodes.append(payload)
+
+        for value in payload.values():
+            nodes.extend(_collect_raw_nodes_for_page(value, page_no))
+    elif isinstance(payload, list):
+        for value in payload:
+            nodes.extend(_collect_raw_nodes_for_page(value, page_no))
+
+    return nodes
+
+
+def _collect_raw_nodes_for_pages(payload) -> list[dict]:
+    nodes: list[dict] = []
+
+    if isinstance(payload, dict):
+        prov_list = payload.get("prov")
+        if not isinstance(prov_list, list) and prov_list is not None:
+            prov_list = [prov_list]
+
+        if prov_list:
+            first_prov = prov_list[0] or {}
+            if first_prov.get("page_no") is not None and first_prov.get("bbox") is not None:
+                nodes.append(payload)
+
+        for value in payload.values():
+            nodes.extend(_collect_raw_nodes_for_pages(value))
+    elif isinstance(payload, list):
+        for value in payload:
+            nodes.extend(_collect_raw_nodes_for_pages(value))
+
+    return nodes

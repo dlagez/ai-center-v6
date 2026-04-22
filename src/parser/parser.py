@@ -3,9 +3,11 @@ import io
 import re
 from hashlib import sha1
 from pathlib import Path
+from typing import Any
 
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.datamodel.settings import PageRange
 from docling.document_converter import DocumentConverter
 from docling.document_converter import PdfFormatOption
 from pydantic import BaseModel
@@ -37,8 +39,11 @@ class DoclingParser:
             },
         )
 
-    def parse(self, source: str | Path) -> ParsedDocument:
-        result = self.converter.convert(source)
+    def parse(self, source: str | Path, page_range: PageRange | None = None) -> ParsedDocument:
+        convert_kwargs: dict[str, Any] = {}
+        if page_range is not None:
+            convert_kwargs["page_range"] = page_range
+        result = self.converter.convert(source, **convert_kwargs)
         doc = result.document
         markdown = doc.export_to_markdown()
         source_str = str(source)
@@ -51,13 +56,26 @@ class DoclingParser:
             metadata={"source_type": "docling"},
         )
 
-    def parse_visualized_pdf(self, source: str | Path) -> dict:
-        result = self.visual_converter.convert(source)
+    def parse_visualized_pdf(self, source: str | Path, page_range: PageRange | None = None) -> dict:
+        convert_kwargs: dict[str, Any] = {}
+        if page_range is not None:
+            convert_kwargs["page_range"] = page_range
+        result = self.visual_converter.convert(source, **convert_kwargs)
         doc = result.document
         doc_dict = doc.export_to_dict()
-        return self.build_visualized_payload_from_dict(doc_dict, doc=doc)
+        normalized = _normalize_doc_dict_page_numbers(doc_dict, page_range)
+        return self.build_visualized_payload_from_dict(
+            normalized["doc_dict"],
+            doc=doc,
+            page_image_map=normalized["page_image_map"],
+        )
 
-    def build_visualized_payload_from_dict(self, doc_dict: dict, doc=None) -> dict:
+    def build_visualized_payload_from_dict(
+        self,
+        doc_dict: dict,
+        doc=None,
+        page_image_map: dict[int, int] | None = None,
+    ) -> dict:
         raw_pages = doc_dict.get("pages") or {}
 
         blocks: list[DoclingBlockPreview] = []
@@ -83,7 +101,7 @@ class DoclingParser:
 
         return {
             "summary": _build_summary(doc_dict, blocks),
-            "pages": _build_page_previews(doc_dict, block_counts, doc),
+            "pages": _build_page_previews(doc_dict, block_counts, doc, page_image_map),
             "blocks": sorted(blocks, key=_block_sort_key),
             "result": doc_dict,
         }
@@ -241,13 +259,21 @@ def _block_sort_key(block: DoclingBlockPreview) -> tuple:
     return (page_no, 999.0, 999.0, 999.0, 999.0, block.label, block.raw_path)
 
 
-def _build_page_previews(doc_dict: dict, block_counts: dict[int, int], doc) -> list[DoclingPagePreview]:
+def _build_page_previews(
+    doc_dict: dict,
+    block_counts: dict[int, int],
+    doc,
+    page_image_map: dict[int, int] | None = None,
+) -> list[DoclingPagePreview]:
     pages: list[DoclingPagePreview] = []
     raw_pages = doc_dict.get("pages") or {}
 
     for page_no in sorted(raw_pages.keys(), key=int):
         image_data_url = None
-        page_item = doc.pages.get(int(page_no)) if doc is not None and hasattr(doc, "pages") else None
+        page_lookup_no = int(page_no)
+        if page_image_map is not None:
+            page_lookup_no = page_image_map.get(page_lookup_no, page_lookup_no)
+        page_item = doc.pages.get(page_lookup_no) if doc is not None and hasattr(doc, "pages") else None
         page_image = getattr(page_item, "image", None)
         pil_image = None
         if page_image is not None and hasattr(page_image, "pil_image"):
@@ -267,3 +293,55 @@ def _build_page_previews(doc_dict: dict, block_counts: dict[int, int], doc) -> l
         )
 
     return pages
+
+
+def _normalize_doc_dict_page_numbers(
+    doc_dict: dict,
+    page_range: PageRange | None,
+) -> dict[str, Any]:
+    raw_pages = doc_dict.get("pages") or {}
+    if page_range is None or not raw_pages:
+        return {"doc_dict": doc_dict, "page_image_map": None}
+
+    start_page, end_page = page_range
+    expected_size = max(1, end_page - start_page + 1)
+    page_numbers = sorted(int(page_no) for page_no in raw_pages.keys())
+    if not page_numbers:
+        return {"doc_dict": doc_dict, "page_image_map": None}
+
+    looks_relative = (
+        start_page > 1
+        and page_numbers[0] == 1
+        and page_numbers[-1] <= expected_size
+    )
+    if not looks_relative:
+        return {"doc_dict": doc_dict, "page_image_map": None}
+
+    offset = start_page - 1
+    normalized = _shift_page_numbers(doc_dict, offset)
+    page_image_map = {page_no + offset: page_no for page_no in page_numbers}
+    return {"doc_dict": normalized, "page_image_map": page_image_map}
+
+
+def _shift_page_numbers(payload, offset: int):
+    if isinstance(payload, dict):
+        shifted: dict = {}
+        for key, value in payload.items():
+            next_key = key
+            if key == "pages" and isinstance(value, dict):
+                shifted["pages"] = {
+                    str(int(page_no) + offset): _shift_page_numbers(page_payload, offset)
+                    for page_no, page_payload in value.items()
+                }
+                continue
+            if key == "page_no" and isinstance(value, int):
+                next_value = value + offset
+            else:
+                next_value = _shift_page_numbers(value, offset)
+            shifted[next_key] = next_value
+        return shifted
+
+    if isinstance(payload, list):
+        return [_shift_page_numbers(item, offset) for item in payload]
+
+    return payload

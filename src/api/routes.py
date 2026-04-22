@@ -29,7 +29,9 @@ from src.observability import observe
 from src.rag.agentic.service import AgenticRagService
 from src.rag.service import KnowledgeIngestionService, KnowledgeSearchService
 from src.repositories.system_config_repository import SystemConfigRepository
+from src.repositories.uploaded_file_repository import UploadedFileRepository
 from src.services.system_config_service import SystemConfigService
+from src.services.uploaded_file_service import UploadedFileService
 from src.storage.file_service import get_file_service
 from src.storage.minio_client import MinioConfigError
 from src.workflow.excel_update.analyzer import analyze_excel_update
@@ -119,14 +121,20 @@ async def excel_update_task_list_page() -> FileResponse:
 
 
 @router.post("/files/upload", response_model=FileUploadResponse)
-async def upload_file(file: UploadFile = File(...)) -> FileUploadResponse:
+async def upload_file(
+    file: UploadFile = File(...),
+    biz_type: str = Form(default="general"),
+    biz_id: str | None = Form(default=None),
+    db: Session = Depends(get_db),
+) -> FileUploadResponse:
+    service = UploadedFileService(UploadedFileRepository(db))
     try:
         with observe(
             name="api.files.upload",
             as_type="span",
             input={"file_name": file.filename},
         ):
-            result = get_file_service().upload_file(file)
+            result = service.upload(file, biz_type=biz_type, biz_id=biz_id)
     except MinioConfigError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     except Exception as exc:
@@ -134,7 +142,7 @@ async def upload_file(file: UploadFile = File(...)) -> FileUploadResponse:
     finally:
         await file.close()
 
-    return FileUploadResponse(**result)
+    return result
 
 
 @router.post("/agents/sql")

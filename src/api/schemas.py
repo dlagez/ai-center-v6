@@ -42,9 +42,30 @@ class SystemConfigResponse(BaseModel):
 
 
 class FileUploadResponse(BaseModel):
+    file_id: str
+    file_name: str
+    content_type: str
+    file_size: int
+    biz_type: str
+    folder_path: str
     object_name: str
     url: str
     etag: str
+
+
+class PdfPreviewFileResponse(BaseModel):
+    file_id: str
+    file_name: str
+    stored_name: str
+    object_name: str
+    bucket_name: str
+    biz_type: str
+    date_folder: str
+    folder_path: str
+    content_type: str
+    file_size: int
+    file_ext: str | None
+    created_at: datetime
 
 
 class VisionChatRequest(BaseModel):

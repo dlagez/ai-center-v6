@@ -4,8 +4,10 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from src.api.pdf_preview_routes import router as pdf_preview_router
 from src.api.routes import router
 from src.config.settings import settings
+from src.db.session import init_db
 from src.observability import flush_langfuse
 from src.storage.minio_client import ensure_minio_bucket
 
@@ -13,6 +15,7 @@ from src.storage.minio_client import ensure_minio_bucket
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     try:
+        init_db()
         ensure_minio_bucket()
         yield
     finally:
@@ -21,6 +24,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 app.include_router(router)
+app.include_router(pdf_preview_router)
 static_dir = Path(__file__).resolve().parent / "static"
 if static_dir.is_dir():
     app.mount("/static", StaticFiles(directory=static_dir), name="static")

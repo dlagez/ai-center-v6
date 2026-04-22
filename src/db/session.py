@@ -40,6 +40,7 @@ def get_db() -> Generator[Session, None, None]:
 
 def init_db() -> None:
     from src.db.models import system_config  # noqa: F401
+    from src.db.models import uploaded_file  # noqa: F401
     from src.workflow.excel_update import models as excel_update_models  # noqa: F401
 
     Base.metadata.create_all(bind=get_engine())

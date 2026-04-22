@@ -1,0 +1,124 @@
+:root {
+  font-family: "Segoe UI", "PingFang SC", sans-serif;
+  color: #102a43;
+  background: #f4f7fb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.page-shell {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.panel {
+  padding: 20px;
+}
+
+.controls-panel {
+  border-right: 1px solid #d9e2ec;
+  background: #fff;
+}
+
+.preview-panel {
+  overflow: auto;
+}
+
+.stack {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #bcccdc;
+  border-radius: 8px;
+}
+
+button {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  background: #0b69ff;
+  color: #fff;
+  cursor: pointer;
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
+}
+
+.muted {
+  color: #486581;
+}
+
+pre {
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  border-radius: 8px;
+  background: #f0f4f8;
+}
+
+.pdf-preview-root {
+  width: 100%;
+}
+
+.pdf-preview-container {
+  display: grid;
+  gap: 20px;
+  justify-items: center;
+  padding: 20px;
+}
+
+.pdf-page {
+  position: relative;
+  width: fit-content;
+  box-shadow: 0 10px 30px rgba(16, 42, 67, 0.12);
+}
+
+.pdf-canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  background: #fff;
+}
+
+.pdf-highlight-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.pdf-highlight-box {
+  position: absolute;
+  border: 2px solid rgba(217, 48, 37, 0.95);
+  background: rgba(255, 235, 59, 0.28);
+  box-shadow: 0 0 0 1px rgba(217, 48, 37, 0.2);
+}
+
+@media (max-width: 960px) {
+  .page-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .controls-panel {
+    border-right: 0;
+    border-bottom: 1px solid #d9e2ec;
+  }
+}

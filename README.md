@@ -30,8 +30,8 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 Copy-Item .env.example .env
-source .venv/bin/activate
-uvicorn src.api.app:app --reload
+.venv/bin/uvicorn src.api.app:app --host 0.0.0.0 --port 8000 --reload
+npm --prefix ./frontend run dev -- --host 0.0.0.0 --port 5173
 ```
 
 ## LiteLLM 最简接入

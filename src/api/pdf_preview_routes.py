@@ -1,8 +1,7 @@
-from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from src.api.schemas import PdfPreviewFileResponse
@@ -57,11 +56,3 @@ async def stream_pdf_preview_file(file_id: str, db: Session = Depends(get_db)) -
 
     headers = _build_inline_pdf_headers(file_record.file_name)
     return Response(content=payload, media_type="application/pdf", headers=headers)
-
-
-@router.get("/pdf-preview/demo")
-async def pdf_preview_demo_page() -> FileResponse:
-    page_path = Path(__file__).resolve().parent / "static" / "pdf-preview" / "demo.html"
-    if not page_path.is_file():
-        raise HTTPException(status_code=404, detail="PDF preview demo page not found")
-    return FileResponse(path=page_path, media_type="text/html; charset=utf-8")

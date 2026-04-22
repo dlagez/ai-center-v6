@@ -1,8 +1,5 @@
 from contextlib import asynccontextmanager
-from pathlib import Path
-
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 
 from src.api.pdf_preview_routes import router as pdf_preview_router
 from src.api.routes import router
@@ -25,9 +22,6 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 app.include_router(router)
 app.include_router(pdf_preview_router)
-static_dir = Path(__file__).resolve().parent / "static"
-if static_dir.is_dir():
-    app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
 @app.get("/health")

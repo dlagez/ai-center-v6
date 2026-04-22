@@ -1,0 +1,102 @@
+:root {
+  color-scheme: light;
+  font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  color: #221d18;
+  background:
+    radial-gradient(circle at top left, rgba(13, 107, 90, 0.14), transparent 30%),
+    radial-gradient(circle at top right, rgba(206, 121, 47, 0.12), transparent 24%),
+    linear-gradient(180deg, #fbf7f0 0%, #f4efe7 100%);
+}
+
+* { box-sizing: border-box; }
+
+.excel-page {
+  width: min(1220px, calc(100% - 32px));
+  margin: 24px auto 40px;
+}
+
+.excel-hero {
+  padding: 28px;
+  border-radius: 24px;
+  color: #f8f6f1;
+  background: linear-gradient(135deg, rgba(13, 107, 90, 0.96), rgba(8, 77, 66, 0.96));
+  box-shadow: 0 20px 44px rgba(73, 52, 30, 0.12);
+  margin-bottom: 22px;
+}
+
+.excel-hero h1 { margin: 0 0 8px; font-size: clamp(28px, 4vw, 42px); }
+.excel-hero p { margin: 0; line-height: 1.6; color: rgba(248,246,241,0.84); }
+.excel-layout, .excel-log-list { display: grid; gap: 20px; }
+.excel-topbar, .excel-actions, .excel-chip-row, .excel-pill-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.excel-topbar { justify-content: space-between; align-items: center; margin-bottom: 18px; }
+
+.excel-panel {
+  background: #fffaf2;
+  border: 1px solid #d7cab7;
+  border-radius: 22px;
+  box-shadow: 0 20px 44px rgba(73, 52, 30, 0.12);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.excel-panel-head {
+  padding: 18px 22px 14px;
+  background: linear-gradient(180deg, rgba(246, 238, 226, 0.9), rgba(255, 250, 242, 0.5));
+  border-bottom: 1px solid rgba(215, 202, 183, 0.85);
+}
+
+.excel-panel-body { padding: 20px 22px 22px; }
+.excel-form, .excel-field { display: grid; gap: 8px; }
+.excel-form { gap: 16px; }
+.excel-compact-row { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.8fr); gap: 14px; }
+
+input[type="text"], input[type="file"], textarea, select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #d7cab7;
+  border-radius: 14px;
+  background: #fffdf9;
+  color: #221d18;
+  font: inherit;
+}
+
+textarea { min-height: 110px; resize: vertical; }
+button, .button-link {
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 18px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  background: #0d6b5a;
+  color: #f7f4ef;
+}
+.button-secondary { background: #eadfce; color: #221d18; }
+.excel-status { min-height: 24px; color: #766b61; font-size: 14px; }
+.excel-status.is-error { color: #a53c34; }
+.excel-empty { padding: 16px; border-radius: 16px; border: 1px dashed #d7cab7; background: #f6eee2; color: #766b61; }
+
+.excel-table-shell { overflow: auto; border: 1px solid rgba(215, 202, 183, 0.9); border-radius: 18px; background: #fffdf8; }
+.excel-table { width: 100%; border-collapse: collapse; }
+.excel-table th, .excel-table td { text-align: left; padding: 16px 14px; border-bottom: 1px solid rgba(215,202,183,0.75); }
+.excel-table tbody tr { cursor: pointer; }
+.excel-table tbody tr:hover { background: #f1f8f5; }
+.excel-file-name { font-weight: 700; }
+.excel-task-id { font-family: Consolas, "SFMono-Regular", monospace; font-size: 12px; color: #766b61; word-break: break-all; }
+.excel-log-item, .excel-meta-item { border: 1px solid rgba(215, 202, 183, 0.9); border-radius: 18px; background: #fffdf8; padding: 16px; }
+.excel-log-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 10px; }
+.excel-pill { display: inline-flex; align-items: center; min-height: 28px; padding: 4px 10px; border-radius: 999px; background: #edf5f2; color: #0d6b5a; font-weight: 700; font-size: 12px; }
+.excel-details { margin-top: 12px; }
+.excel-details pre { white-space: pre-wrap; word-break: break-word; font-family: Consolas, "SFMono-Regular", monospace; font-size: 12px; }
+.excel-meta-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.excel-label, .excel-muted { color: #766b61; font-size: 12px; }
+
+@media (max-width: 920px) {
+  .excel-compact-row, .excel-meta-grid { grid-template-columns: 1fr; }
+}

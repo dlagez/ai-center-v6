@@ -104,22 +104,6 @@ def _download_excel_to_tempfile(object_name: str, suffix: str = ".xlsx") -> str:
     return temp_file.name
 
 
-@router.get("/pages/excel-update")
-async def excel_update_page() -> FileResponse:
-    page_path = Path(__file__).resolve().parent / "static" / "excel-update.html"
-    if not page_path.is_file():
-        raise HTTPException(status_code=404, detail="Excel update page not found")
-    return FileResponse(path=page_path, media_type="text/html; charset=utf-8")
-
-
-@router.get("/pages/excel-update/tasks")
-async def excel_update_task_list_page() -> FileResponse:
-    page_path = Path(__file__).resolve().parent / "static" / "excel-update-tasks.html"
-    if not page_path.is_file():
-        raise HTTPException(status_code=404, detail="Excel update task list page not found")
-    return FileResponse(path=page_path, media_type="text/html; charset=utf-8")
-
-
 @router.post("/files/upload", response_model=FileUploadResponse)
 async def upload_file(
     file: UploadFile = File(...),

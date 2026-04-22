@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from src.knowledge.indexer import QdrantIndexer
-from src.knowledge.parser import DoclingParser
+from src.parser.parser import DoclingParser
 from src.knowledge.retriever import QdrantRetriever
 from src.observability import current_trace_info, observe
 from src.rag.schemas import IngestSummary, SearchSummary

@@ -3,9 +3,10 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from src.db.session import get_db
-from src.knowledge.parser import DoclingBlockPreview, DoclingPagePreview
+from src.parser.parser import DoclingBlockPreview, DoclingPagePreview
+from src.parser.service import DoclingParserService
+from src.repositories.docling_parse_result_repository import DoclingParseResultRepository
 from src.repositories.uploaded_file_repository import UploadedFileRepository
-from src.services.docling_pdf_service import DoclingPdfService
 
 router = APIRouter()
 
@@ -29,10 +30,13 @@ async def parse_docling_pdf(
     request: DoclingParseRequest,
     db: Session = Depends(get_db),
 ) -> DoclingParseResponse:
-    service = DoclingPdfService(UploadedFileRepository(db))
+    service = DoclingParserService(
+        UploadedFileRepository(db),
+        DoclingParseResultRepository(db),
+    )
 
     try:
-        parsed = service.parse_uploaded_pdf(request.file_id)
+        parsed = service.parse_pdf_file(request.file_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return DoclingParseResponse(

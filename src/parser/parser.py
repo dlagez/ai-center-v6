@@ -4,11 +4,11 @@ import re
 from hashlib import sha1
 from pathlib import Path
 
-from pydantic import BaseModel
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter
 from docling.document_converter import PdfFormatOption
+from pydantic import BaseModel
 
 from src.knowledge.schemas import ParsedDocument
 
@@ -55,6 +55,9 @@ class DoclingParser:
         result = self.visual_converter.convert(source)
         doc = result.document
         doc_dict = doc.export_to_dict()
+        return self.build_visualized_payload_from_dict(doc_dict, doc=doc)
+
+    def build_visualized_payload_from_dict(self, doc_dict: dict, doc=None) -> dict:
         raw_pages = doc_dict.get("pages") or {}
 
         blocks: list[DoclingBlockPreview] = []
@@ -244,7 +247,7 @@ def _build_page_previews(doc_dict: dict, block_counts: dict[int, int], doc) -> l
 
     for page_no in sorted(raw_pages.keys(), key=int):
         image_data_url = None
-        page_item = doc.pages.get(int(page_no)) if hasattr(doc, "pages") else None
+        page_item = doc.pages.get(int(page_no)) if doc is not None and hasattr(doc, "pages") else None
         page_image = getattr(page_item, "image", None)
         pil_image = None
         if page_image is not None and hasattr(page_image, "pil_image"):

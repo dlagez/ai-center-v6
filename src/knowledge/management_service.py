@@ -1,5 +1,5 @@
 from collections.abc import Iterable
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
@@ -128,6 +128,7 @@ class KnowledgeManagementService:
     def list_documents(self, kb_id: str, *, limit: int = 500) -> list[dict[str, Any]]:
         base = self._get_base_entity(kb_id)
         documents = self.knowledge_document_repository.list_by_kb_id(base.kb_id, limit=limit)
+        documents = [self._reconcile_document_state(item) for item in documents]
         return [self._serialize_document(item) for item in documents]
 
     def index_file(
@@ -454,6 +455,36 @@ class KnowledgeManagementService:
             "created_at": document.created_at.isoformat() if document.created_at else "",
             "updated_at": document.updated_at.isoformat() if document.updated_at else "",
         }
+
+    def _reconcile_document_state(self, document: KnowledgeDocument) -> KnowledgeDocument:
+        if document.status != "running":
+            return document
+        if document.last_index_finished_at is not None:
+            return document
+        if document.last_index_started_at is None:
+            return document
+
+        stale_threshold = datetime.now() - timedelta(minutes=5)
+        if document.last_index_started_at > stale_threshold:
+            return document
+
+        parse_task = None
+        if document.parse_task_id:
+            parse_task = self.parser_service.docling_parse_task_repository.get_by_task_id(document.parse_task_id)
+
+        if parse_task and parse_task.status in {"running", "pending"}:
+            return document
+
+        if document.current_stage == "parsing" and parse_task and parse_task.status == "success":
+            error_message = "Indexing request was interrupted after parsing completed. Retry will reuse cached parse results."
+        else:
+            error_message = "Indexing request was interrupted before completion. Please retry."
+
+        document.status = "failed"
+        document.last_error_stage = document.current_stage
+        document.error_message = error_message
+        document.last_index_finished_at = datetime.now()
+        return self.knowledge_document_repository.update(document)
 
     def _extract_parse_task_id(self, file_id: str) -> str | None:
         task = self.parser_service.docling_parse_task_repository.get_latest_by_file_id(file_id)

@@ -1,18 +1,15 @@
-const API_PORT = "8000";
+const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000";
 
-function getApiOrigin() {
-  if (typeof window === "undefined") {
-    return `http://127.0.0.1:${API_PORT}`;
-  }
-  const host = window.location.hostname || "127.0.0.1";
-  return `http://${host}:${API_PORT}`;
+function getApiBaseUrl() {
+  const value = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL;
+  return value.endsWith("/") ? value.slice(0, -1) : value;
 }
 
 export function buildApiUrl(path) {
   if (!path.startsWith("/")) {
     throw new Error(`API path must start with '/': ${path}`);
   }
-  return `${getApiOrigin()}${path}`;
+  return `${getApiBaseUrl()}${path}`;
 }
 
 export async function parseJsonResponse(response) {

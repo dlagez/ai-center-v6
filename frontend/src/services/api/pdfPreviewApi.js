@@ -1,17 +1,11 @@
-async function parseJsonResponse(response) {
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload.detail || "Request failed");
-  }
-  return payload;
-}
+import { buildApiUrl, parseJsonResponse } from "./client";
 
 export async function uploadPdfFile(file) {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("biz_type", "pdf-preview");
 
-  const response = await fetch("/files/upload", {
+  const response = await fetch(buildApiUrl("/files/upload"), {
     method: "POST",
     body: formData,
   });
@@ -20,10 +14,10 @@ export async function uploadPdfFile(file) {
 }
 
 export async function listPdfPreviewFiles() {
-  const response = await fetch("/api/pdf-preview/files");
+  const response = await fetch(buildApiUrl("/api/pdf-preview/files"));
   return parseJsonResponse(response);
 }
 
 export function getPdfPreviewFileUrl(fileId) {
-  return `/api/pdf-preview/files/${fileId}/file`;
+  return buildApiUrl(`/api/pdf-preview/files/${fileId}/file`);
 }

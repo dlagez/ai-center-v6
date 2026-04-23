@@ -1,13 +1,7 @@
-async function parseJsonResponse(response) {
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload.detail || "Request failed");
-  }
-  return payload;
-}
+import { buildApiUrl, parseJsonResponse } from "./client";
 
 export async function parseDoclingPdf(fileId) {
-  const response = await fetch("/api/docling/pdf/parse", {
+  const response = await fetch(buildApiUrl("/api/docling/pdf/parse"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

@@ -1,20 +1,14 @@
-async function parseJsonResponse(response) {
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload.detail || "Request failed");
-  }
-  return payload;
-}
+import { buildApiUrl, parseJsonResponse } from "./client";
 
 export async function listExcelUpdateTasks() {
-  const response = await fetch("/workflow/excel-update/tasks");
+  const response = await fetch(buildApiUrl("/workflow/excel-update/tasks"));
   return parseJsonResponse(response);
 }
 
 export async function createExcelUpdateTask(file) {
   const formData = new FormData();
   formData.append("file", file);
-  const response = await fetch("/workflow/excel-update/tasks", {
+  const response = await fetch(buildApiUrl("/workflow/excel-update/tasks"), {
     method: "POST",
     body: formData,
   });
@@ -22,7 +16,7 @@ export async function createExcelUpdateTask(file) {
 }
 
 export async function getExcelUpdateTask(taskId) {
-  const response = await fetch(`/workflow/excel-update/tasks/${encodeURIComponent(taskId)}`);
+  const response = await fetch(buildApiUrl(`/workflow/excel-update/tasks/${encodeURIComponent(taskId)}`));
   return parseJsonResponse(response);
 }
 
@@ -35,7 +29,7 @@ export async function createExcelUpdateOperation(taskId, payload) {
   }
 
   const response = await fetch(
-    `/workflow/excel-update/tasks/${encodeURIComponent(taskId)}/operations`,
+    buildApiUrl(`/workflow/excel-update/tasks/${encodeURIComponent(taskId)}/operations`),
     {
       method: "POST",
       body: formData,

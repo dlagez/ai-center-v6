@@ -3,6 +3,8 @@ import DoclingTaskMonitorPage from "./pages/docling-tasks";
 import ExcelUpdateDetailPage from "./pages/excel-update/detail";
 import ExcelUpdateTasksPage from "./pages/excel-update/tasks";
 import HomePage from "./pages/home";
+import KnowledgeBasePage from "./pages/knowledge-base";
+import KnowledgeBaseDetailPage from "./pages/knowledge-base/detail";
 import PdfPreviewDemoPage from "./pages/pdf-preview";
 import TenderKbPage from "./pages/tender-kb";
 
@@ -31,6 +33,14 @@ export default function App() {
 
   if (path === "/tender-kb") {
     return <TenderKbPage />;
+  }
+
+  if (path === "/knowledge-base") {
+    return <KnowledgeBasePage />;
+  }
+
+  if (path === "/knowledge-base/detail") {
+    return <KnowledgeBaseDetailPage />;
   }
 
   return <HomePage />;

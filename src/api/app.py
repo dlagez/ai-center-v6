@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.docling_routes import router as docling_router
+from src.api.knowledge_routes import router as knowledge_router
 from src.api.pdf_preview_routes import router as pdf_preview_router
 from src.api.routes import router
 from src.api.tender_kb_routes import router as tender_kb_router
@@ -22,7 +24,15 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(router)
+app.include_router(knowledge_router)
 app.include_router(pdf_preview_router)
 app.include_router(docling_router)
 app.include_router(tender_kb_router)

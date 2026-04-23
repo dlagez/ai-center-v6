@@ -22,6 +22,11 @@ const NAV_ITEMS = [
     description: "解析 PDF、使用招投标专用 chunk 入库向量库，并在同页发起知识库问答。",
   },
   {
+    title: "知识库管理",
+    path: "/knowledge-base",
+    description: "统一管理知识库内容、入库操作、检索测试和删除，作为基础管理页面使用。",
+  },
+  {
     title: "Excel 任务列表",
     path: "/excel-update/tasks",
     description: "查看 Excel 更新任务列表，进入具体任务详情页继续处理。",

@@ -1,13 +1,7 @@
-async function parseJsonResponse(response) {
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload.detail || "Request failed");
-  }
-  return payload;
-}
+import { buildApiUrl, parseJsonResponse } from "./client";
 
 export async function indexTenderKb(fileId) {
-  const response = await fetch("/api/tender-kb/index", {
+  const response = await fetch(buildApiUrl("/api/tender-kb/index"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -18,7 +12,7 @@ export async function indexTenderKb(fileId) {
 }
 
 export async function askTenderKb({ fileId, question, limit = 5 }) {
-  const response = await fetch("/api/tender-kb/ask", {
+  const response = await fetch(buildApiUrl("/api/tender-kb/ask"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

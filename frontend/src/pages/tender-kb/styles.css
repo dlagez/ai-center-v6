@@ -1,0 +1,243 @@
+:root {
+  color-scheme: light;
+  font-family: "Segoe UI", "PingFang SC", sans-serif;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  color: #102a43;
+  background:
+    radial-gradient(circle at top, rgba(0, 117, 74, 0.10), transparent 28%),
+    linear-gradient(180deg, #f8fbff 0%, #eef5f6 100%);
+}
+
+* { box-sizing: border-box; }
+
+.tender-kb-shell {
+  width: min(1600px, calc(100% - 24px));
+  margin: 16px auto 24px;
+}
+
+.tender-kb-topbar,
+.tender-kb-card,
+.tender-kb-file-card,
+.tender-kb-status-bar {
+  border: 1px solid rgba(16, 42, 67, 0.08);
+  border-radius: 18px;
+  background: rgba(255,255,255,0.92);
+  box-shadow: 0 14px 36px rgba(53, 80, 112, 0.08);
+}
+
+.tender-kb-topbar {
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.tender-kb-eyebrow {
+  margin: 0 0 6px;
+  color: #00754a;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.tender-kb-topbar h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+}
+
+.tender-kb-lead {
+  margin: 12px 0 0;
+  max-width: 800px;
+  color: #486581;
+}
+
+.tender-kb-control-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(280px, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.tender-kb-card,
+.tender-kb-file-card,
+.tender-kb-status-bar {
+  padding: 14px 16px;
+}
+
+.tender-kb-card-head {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.tender-kb-card-head span,
+.tender-kb-status-bar,
+.tender-kb-file-item span {
+  color: #486581;
+}
+
+.tender-kb-card input,
+.tender-kb-card button,
+.tender-kb-qa-form textarea {
+  width: 100%;
+}
+
+.tender-kb-card input,
+.tender-kb-card button,
+.tender-kb-file-item,
+.tender-kb-source-item,
+.tender-kb-qa-form textarea {
+  border-radius: 12px;
+}
+
+.tender-kb-card input,
+.tender-kb-qa-form textarea {
+  padding: 10px 12px;
+  border: 1px solid #bcccdc;
+  background: #fff;
+}
+
+.tender-kb-card button,
+.tender-kb-qa-form button {
+  padding: 10px 14px;
+  border: none;
+  background: #00754a;
+  color: #fff;
+  cursor: pointer;
+}
+
+.button-secondary {
+  background: #486581;
+}
+
+.tender-kb-index-result pre,
+.tender-kb-answer pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.tender-kb-file-card {
+  margin-bottom: 14px;
+}
+
+.tender-kb-file-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.tender-kb-file-list {
+  display: grid;
+  gap: 8px;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.tender-kb-file-item {
+  display: grid;
+  gap: 4px;
+  align-items: start;
+  justify-items: start;
+  padding: 10px 12px;
+  border: 1px solid #d9e2ec;
+  background: #f8fbff;
+  text-align: left;
+  color: #102a43;
+  cursor: pointer;
+}
+
+.tender-kb-file-item.is-active {
+  border-color: #00754a;
+  box-shadow: inset 0 0 0 1px #00754a;
+}
+
+.tender-kb-main {
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) minmax(0, 1.25fr);
+  gap: 16px;
+}
+
+.tender-kb-left {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.tender-kb-right {
+  min-height: 760px;
+  overflow: auto;
+  border: 1px solid rgba(16, 42, 67, 0.08);
+  border-radius: 18px;
+  background: rgba(255,255,255,0.9);
+}
+
+.tender-kb-right .pdf-preview-container {
+  padding: 24px 16px 32px;
+}
+
+.tender-kb-qa-form {
+  display: grid;
+  gap: 10px;
+}
+
+.tender-kb-answer {
+  color: #102a43;
+}
+
+.tender-kb-source-list {
+  display: grid;
+  gap: 8px;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.tender-kb-source-item {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d9e2ec;
+  background: #fff;
+  text-align: left;
+  color: #102a43;
+  cursor: pointer;
+}
+
+.tender-kb-source-item.is-active {
+  border-color: #d93025;
+  box-shadow: inset 0 0 0 1px #d93025;
+}
+
+.tender-kb-source-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tender-kb-source-meta {
+  display: grid;
+  gap: 4px;
+  color: #486581;
+  font-size: 0.9rem;
+}
+
+.tender-kb-source-text {
+  color: #355070;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.tender-kb-empty {
+  display: grid;
+  place-items: center;
+  min-height: 240px;
+  color: #486581;
+}

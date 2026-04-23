@@ -17,6 +17,11 @@ const NAV_ITEMS = [
     description: "查看解析任务状态、进度、失败页和每页结果，作为基础监控模块复用。",
   },
   {
+    title: "招投标知识库",
+    path: "/tender-kb",
+    description: "解析 PDF、使用招投标专用 chunk 入库向量库，并在同页发起知识库问答。",
+  },
+  {
     title: "Excel 任务列表",
     path: "/excel-update/tasks",
     description: "查看 Excel 更新任务列表，进入具体任务详情页继续处理。",

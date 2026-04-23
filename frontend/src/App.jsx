@@ -4,6 +4,7 @@ import ExcelUpdateDetailPage from "./pages/excel-update/detail";
 import ExcelUpdateTasksPage from "./pages/excel-update/tasks";
 import HomePage from "./pages/home";
 import PdfPreviewDemoPage from "./pages/pdf-preview";
+import TenderKbPage from "./pages/tender-kb";
 
 export default function App() {
   const path = window.location.pathname;
@@ -26,6 +27,10 @@ export default function App() {
 
   if (path === "/pdf-preview") {
     return <PdfPreviewDemoPage />;
+  }
+
+  if (path === "/tender-kb") {
+    return <TenderKbPage />;
   }
 
   return <HomePage />;

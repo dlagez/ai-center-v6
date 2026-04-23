@@ -20,6 +20,13 @@ class DoclingParseTaskRepository:
         statement = select(DoclingParseTask).where(DoclingParseTask.task_id == task_id)
         return self.db.execute(statement).scalar_one_or_none()
 
+    def list_recent(self, *, file_id: str | None = None, limit: int = 50) -> list[DoclingParseTask]:
+        statement = select(DoclingParseTask)
+        if file_id:
+            statement = statement.where(DoclingParseTask.file_id == file_id)
+        statement = statement.order_by(desc(DoclingParseTask.created_at), desc(DoclingParseTask.id)).limit(limit)
+        return list(self.db.execute(statement).scalars().all())
+
     def create(self, entity: DoclingParseTask) -> DoclingParseTask:
         self.db.add(entity)
         self.db.commit()

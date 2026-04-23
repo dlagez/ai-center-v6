@@ -23,6 +23,18 @@ class DoclingParseResultRepository:
         )
         return self.db.execute(statement).scalar_one_or_none()
 
+    def list_failed_by_task_id(self, task_id: str, limit: int = 20) -> list[DoclingParseResult]:
+        statement = (
+            select(DoclingParseResult)
+            .where(
+                DoclingParseResult.task_id == task_id,
+                DoclingParseResult.parse_status == "failed",
+            )
+            .order_by(DoclingParseResult.page_no.asc(), DoclingParseResult.id.asc())
+            .limit(limit)
+        )
+        return list(self.db.execute(statement).scalars().all())
+
     def create(self, entity: DoclingParseResult) -> DoclingParseResult:
         self.db.add(entity)
         self.db.commit()

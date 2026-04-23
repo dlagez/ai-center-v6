@@ -37,6 +37,58 @@ class DoclingParseServiceResult:
         self.result = result
 
 
+class DoclingParseTaskSummary:
+    def __init__(
+        self,
+        *,
+        task_id: str,
+        file_id: str,
+        file_name: str,
+        status: str,
+        progress: float,
+        total_pages: int,
+        parsed_pages: int,
+        failed_pages: int,
+        batch_size: int,
+        current_batch_no: int,
+        parser_version: str,
+        error_message: str | None,
+        started_at,
+        finished_at,
+        created_at,
+        updated_at,
+    ) -> None:
+        self.task_id = task_id
+        self.file_id = file_id
+        self.file_name = file_name
+        self.status = status
+        self.progress = progress
+        self.total_pages = total_pages
+        self.parsed_pages = parsed_pages
+        self.failed_pages = failed_pages
+        self.batch_size = batch_size
+        self.current_batch_no = current_batch_no
+        self.parser_version = parser_version
+        self.error_message = error_message
+        self.started_at = started_at
+        self.finished_at = finished_at
+        self.created_at = created_at
+        self.updated_at = updated_at
+
+
+class DoclingParseTaskDetail(DoclingParseTaskSummary):
+    def __init__(
+        self,
+        *,
+        failed_results: list[dict],
+        page_results: list[dict],
+        **kwargs,
+    ) -> None:
+        super().__init__(**kwargs)
+        self.failed_results = failed_results
+        self.page_results = page_results
+
+
 class DoclingParserService:
     batch_size = 10
 
@@ -158,6 +210,46 @@ class DoclingParserService:
             if temp_path:
                 Path(temp_path).unlink(missing_ok=True)
 
+    def list_tasks(self, *, file_id: str | None = None, limit: int = 50) -> list[DoclingParseTaskSummary]:
+        tasks = self.docling_parse_task_repository.list_recent(file_id=file_id, limit=limit)
+        file_names = self._resolve_file_names(tasks)
+        return [
+            self._build_task_summary(task, file_names.get(task.file_id, task.file_id))
+            for task in tasks
+        ]
+
+    def get_task_detail(self, task_id: str) -> DoclingParseTaskDetail:
+        task = self.docling_parse_task_repository.get_by_task_id(task_id)
+        if task is None:
+            raise ValueError("Parse task not found")
+
+        file_record = self.uploaded_file_service.get_pdf_file(task.file_id)
+        page_results = self.docling_parse_result_repository.list_by_task_id(task_id)
+        failed_results = self.docling_parse_result_repository.list_failed_by_task_id(task_id)
+
+        return DoclingParseTaskDetail(
+            **self._build_task_summary(task, file_record.file_name).__dict__,
+            failed_results=[
+                {
+                    "page_no": item.page_no,
+                    "batch_no": item.batch_no,
+                    "error_message": item.error_message,
+                    "parse_status": item.parse_status,
+                }
+                for item in failed_results
+            ],
+            page_results=[
+                {
+                    "page_no": item.page_no,
+                    "batch_no": item.batch_no,
+                    "parse_status": item.parse_status,
+                    "block_count": item.block_count,
+                    "updated_at": item.updated_at,
+                }
+                for item in page_results
+            ],
+        )
+
     def _build_cached_response(
         self,
         file_id: str,
@@ -190,6 +282,40 @@ class DoclingParserService:
             self.docling_parse_task_repository.update(task)
         else:
             self.docling_parse_task_repository.create(task)
+
+    def _resolve_file_names(self, tasks: list[DoclingParseTask]) -> dict[str, str]:
+        file_names: dict[str, str] = {}
+        for task in tasks:
+            if task.file_id in file_names:
+                continue
+            try:
+                file_record = self.uploaded_file_service.get_pdf_file(task.file_id)
+                file_names[task.file_id] = file_record.file_name
+            except ValueError:
+                file_names[task.file_id] = task.file_id
+        return file_names
+
+    @staticmethod
+    def _build_task_summary(task: DoclingParseTask, file_name: str) -> DoclingParseTaskSummary:
+        progress = float(task.progress) if task.progress is not None else 0.0
+        return DoclingParseTaskSummary(
+            task_id=task.task_id,
+            file_id=task.file_id,
+            file_name=file_name,
+            status=task.status,
+            progress=progress,
+            total_pages=task.total_pages,
+            parsed_pages=task.parsed_pages,
+            failed_pages=task.failed_pages,
+            batch_size=task.batch_size,
+            current_batch_no=task.current_batch_no,
+            parser_version=task.parser_version,
+            error_message=task.error_message,
+            started_at=task.started_at,
+            finished_at=task.finished_at,
+            created_at=task.created_at,
+            updated_at=task.updated_at,
+        )
 
     @staticmethod
     def _build_page_results(

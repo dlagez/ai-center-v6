@@ -30,7 +30,7 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 Copy-Item .env.example .env
-.venv/bin/uvicorn src.api.app:app --host 127.0.0.1 --port 8000 --reload
+.venv/bin/uvicorn src.api.app:app --host 127.0.0.1 --port 8000
 npm --prefix ./frontend run dev -- --host 127.0.0.1 --port 5173
 ```
 

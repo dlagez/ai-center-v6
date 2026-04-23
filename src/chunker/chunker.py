@@ -3,8 +3,8 @@ from uuid import NAMESPACE_URL, uuid5
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 
 from src.config.settings import settings
-from src.parser.parser import markdown_to_text
 from src.knowledge.schemas import DocumentChunk, ParsedDocument
+from src.parser.parser import markdown_to_text
 
 DEFAULT_HEADERS_TO_SPLIT_ON = [
     ("#", "h1"),

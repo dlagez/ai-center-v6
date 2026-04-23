@@ -64,7 +64,8 @@ class KnowledgeIngestionService:
             documents = 0
             chunks = 0
             for item in sources:
-                parsed = self.parser.parse(item)
+                docling_document = self.parser.parse(item)
+                parsed = self.parser.build_parsed_document(docling_document, source=item)
                 indexed_chunks = self.indexer.index_document(parsed)
                 documents += 1
                 chunks += len(indexed_chunks)

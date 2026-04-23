@@ -10,6 +10,7 @@ from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.datamodel.settings import PageRange
 from docling.document_converter import DocumentConverter
 from docling.document_converter import PdfFormatOption
+from docling_core.types.doc import DoclingDocument
 from pydantic import BaseModel
 
 from src.knowledge.schemas import ParsedDocument
@@ -39,12 +40,32 @@ class DoclingParser:
             },
         )
 
-    def parse(self, source: str | Path, page_range: PageRange | None = None) -> ParsedDocument:
+    def parse(
+        self,
+        source: str | Path,
+        page_range: PageRange | None = None,
+        *,
+        enable_page_images: bool = False,
+    ) -> DoclingDocument:
         convert_kwargs: dict[str, Any] = {}
         if page_range is not None:
             convert_kwargs["page_range"] = page_range
-        result = self.converter.convert(source, **convert_kwargs)
-        doc = result.document
+        converter = self.visual_converter if enable_page_images else self.converter
+        result = converter.convert(source, **convert_kwargs)
+        doc_dict = result.document.export_to_dict()
+        normalized = _normalize_doc_dict_page_numbers(doc_dict, page_range)
+        return self.deserialize_doc(normalized["doc_dict"])
+
+    @staticmethod
+    def deserialize_doc(doc_dict: dict) -> DoclingDocument:
+        return DoclingDocument.model_validate(doc_dict)
+
+    def build_parsed_document(
+        self,
+        doc: DoclingDocument,
+        *,
+        source: str | Path,
+    ) -> ParsedDocument:
         markdown = doc.export_to_markdown()
         source_str = str(source)
 
@@ -53,21 +74,20 @@ class DoclingParser:
             source=source_str,
             markdown=markdown,
             text=markdown_to_text(markdown),
+            docling_document=doc,
             metadata={"source_type": "docling"},
         )
 
-    def parse_visualized_pdf(self, source: str | Path, page_range: PageRange | None = None) -> dict:
-        convert_kwargs: dict[str, Any] = {}
-        if page_range is not None:
-            convert_kwargs["page_range"] = page_range
-        result = self.visual_converter.convert(source, **convert_kwargs)
-        doc = result.document
-        doc_dict = doc.export_to_dict()
-        normalized = _normalize_doc_dict_page_numbers(doc_dict, page_range)
+    def build_visualized_payload(
+        self,
+        doc: DoclingDocument,
+        *,
+        page_image_map: dict[int, int] | None = None,
+    ) -> dict:
         return self.build_visualized_payload_from_dict(
-            normalized["doc_dict"],
+            doc.export_to_dict(),
             doc=doc,
-            page_image_map=normalized["page_image_map"],
+            page_image_map=page_image_map,
         )
 
     def build_visualized_payload_from_dict(

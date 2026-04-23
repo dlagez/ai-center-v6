@@ -1,6 +1,6 @@
 from qdrant_client import models
 
-from src.knowledge.chunker import chunk_document
+from src.chunker import chunk_document
 from src.knowledge.schemas import DocumentChunk, ParsedDocument
 from src.knowledge.store import QdrantStore
 from src.models.embeddings import embed_texts

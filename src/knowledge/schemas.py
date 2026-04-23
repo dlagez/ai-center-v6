@@ -1,13 +1,17 @@
 from typing import Any
 
-from pydantic import BaseModel, Field
+from docling_core.types.doc import DoclingDocument
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ParsedDocument(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     doc_id: str
     source: str
     markdown: str = Field(default="", description="Markdown exported from Docling.")
     text: str = Field(default="", description="Plain text normalized from markdown.")
+    docling_document: DoclingDocument | None = Field(default=None, description="Native Docling document.")
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 

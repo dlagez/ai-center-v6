@@ -2,6 +2,7 @@ from pathlib import Path
 
 from src.knowledge.indexer import QdrantIndexer
 from src.parser.parser import DoclingParser
+from src.parser.utils import build_parsed_document
 from src.knowledge.retriever import QdrantRetriever
 from src.observability import current_trace_info, observe
 from src.rag.schemas import IngestSummary, SearchSummary
@@ -65,7 +66,7 @@ class KnowledgeIngestionService:
             chunks = 0
             for item in sources:
                 docling_document = self.parser.parse(item)
-                parsed = self.parser.build_parsed_document(docling_document, source=item)
+                parsed = build_parsed_document(docling_document, source=item)
                 indexed_chunks = self.indexer.index_document(parsed)
                 documents += 1
                 chunks += len(indexed_chunks)

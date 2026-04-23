@@ -6,7 +6,13 @@ from uuid import uuid4
 
 from src.db.models.docling_parse_result import DoclingParseResult
 from src.db.models.docling_parse_task import DoclingParseTask
-from src.parser.parser import DoclingBlockPreview, DoclingPagePreview, DoclingParser
+from src.parser.parser import DoclingParser
+from src.parser.utils import (
+    DoclingBlockPreview,
+    DoclingPagePreview,
+    build_parsed_document,
+    build_visualized_payload,
+)
 from src.repositories.docling_parse_result_repository import DoclingParseResultRepository
 from src.repositories.docling_parse_task_repository import DoclingParseTaskRepository
 from src.repositories.uploaded_file_repository import UploadedFileRepository
@@ -204,7 +210,7 @@ class DoclingParserService:
         ]
         merged_docling_document = self.parser.concatenate_docs(page_docs)
         merged_result = merged_docling_document.export_to_dict()
-        visualized = self.parser.build_visualized_payload(merged_docling_document)
+        visualized = build_visualized_payload(merged_docling_document)
         return DoclingParseServiceResult(
             file_id=file_id,
             file_name=file_name,
@@ -320,8 +326,8 @@ class DoclingParserService:
             page_range=page_range,
             enable_page_images=True,
         )
-        parsed_document = self.parser.build_parsed_document(docling_document, source=temp_path)
-        parsed = self.parser.build_visualized_payload(docling_document)
+        parsed_document = build_parsed_document(docling_document, source=temp_path)
+        parsed = build_visualized_payload(docling_document)
         parsed_pages = parsed.get("pages", [])
         if not parsed_pages:
             return None, []
@@ -357,7 +363,7 @@ class DoclingParserService:
 
         merged_docling_document = self.parser.concatenate_docs(batch_results)
         merged_result = merged_docling_document.export_to_dict()
-        visualized = self.parser.build_visualized_payload(merged_docling_document)
+        visualized = build_visualized_payload(merged_docling_document)
         return DoclingParseServiceResult(
             file_id=file_id,
             file_name=file_name,

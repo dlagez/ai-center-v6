@@ -7,7 +7,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from docling_core.transforms.chunker.hierarchical_chunker import HierarchicalChunker
 from src.config.settings import settings
 from src.knowledge.schemas import DocumentChunk, ParsedDocument
-from src.parser.parser import markdown_to_text
+from src.parser.utils import markdown_to_text
 
 CATALOG_PREFIX_RE = re.compile(r"^\s*(\d+-\d+)\s+(.+)$")
 CHAPTER_RE = re.compile(r"^\s*第[一二三四五六七八九十百零]+章\s*.+$")

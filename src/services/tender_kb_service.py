@@ -8,6 +8,7 @@ from src.models.embeddings import embed_query, embed_texts
 from src.models.llm import chat_completion
 from src.parser.parser import DoclingParser
 from src.parser.service import DoclingParserService
+from src.parser.utils import build_parsed_document
 from src.repositories.docling_parse_result_repository import DoclingParseResultRepository
 from src.repositories.docling_parse_task_repository import DoclingParseTaskRepository
 from src.repositories.uploaded_file_repository import UploadedFileRepository
@@ -39,7 +40,7 @@ class TenderKbService:
         if parse_result.status != "success" or parse_result.docling_document is None:
             raise ValueError(parse_result.error or "Docling parse failed")
 
-        parsed_document = self.parser.build_parsed_document(
+        parsed_document = build_parsed_document(
             parse_result.docling_document,
             source=file_record.object_name,
         )

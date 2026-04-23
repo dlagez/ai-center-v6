@@ -42,6 +42,8 @@ def init_db() -> None:
     from src.db.models import docling_parse_result  # noqa: F401
     from src.db.models import docling_parse_task  # noqa: F401
     from src.db.models import system_config  # noqa: F401
+    from src.db.models import tender_review_item  # noqa: F401
+    from src.db.models import tender_review_task  # noqa: F401
     from src.db.models import uploaded_file  # noqa: F401
     from src.workflow.excel_update import models as excel_update_models  # noqa: F401
 

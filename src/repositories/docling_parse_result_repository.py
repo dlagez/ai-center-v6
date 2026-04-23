@@ -16,6 +16,10 @@ class DoclingParseResultRepository:
         )
         return list(self.db.execute(statement).scalars().all())
 
+    def get_by_result_id(self, result_id: str) -> DoclingParseResult | None:
+        statement = select(DoclingParseResult).where(DoclingParseResult.result_id == result_id)
+        return self.db.execute(statement).scalar_one_or_none()
+
     def get_by_task_id_and_page_no(self, task_id: str, page_no: int) -> DoclingParseResult | None:
         statement = select(DoclingParseResult).where(
             DoclingParseResult.task_id == task_id,

@@ -194,10 +194,10 @@ export default function FileManagerPage() {
           {filteredFiles.length ? (
             filteredFiles.map((file) => (
               <article className="file-manager-row" key={file.file_id}>
-                <span className="file-manager-name">
+                <a className="file-manager-name file-manager-link" href={`/file-manager/detail?file_id=${file.file_id}`}>
                   <strong>{file.file_name}</strong>
                   <em>{file.object_name}</em>
-                </span>
+                </a>
                 <span>{file.biz_type}</span>
                 <span>{file.folder_path}</span>
                 <span>{file.content_type}</span>

@@ -3,6 +3,7 @@ import DoclingTaskMonitorPage from "./pages/docling-tasks";
 import ExcelUpdateDetailPage from "./pages/excel-update/detail";
 import ExcelUpdateTasksPage from "./pages/excel-update/tasks";
 import FileManagerPage from "./pages/file-manager";
+import FileManagerDetailPage from "./pages/file-manager/detail";
 import HomePage from "./pages/home";
 import KnowledgeBasePage from "./pages/knowledge-base";
 import KnowledgeBaseDetailPage from "./pages/knowledge-base/detail";
@@ -30,6 +31,10 @@ export default function App() {
 
   if (path === "/file-manager") {
     return <FileManagerPage />;
+  }
+
+  if (path === "/file-manager/detail") {
+    return <FileManagerDetailPage />;
   }
 
   if (path === "/pdf-preview") {

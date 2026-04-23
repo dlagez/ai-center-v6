@@ -12,21 +12,6 @@ const NAV_ITEMS = [
     description: "上传 PDF、查看文件列表，并使用原始 PDF 预览与高亮框调试。",
   },
   {
-    title: "Docling PDF 可视化",
-    path: "/docling-pdf",
-    description: "选择 PDF 后触发 Docling 解析，联动查看块列表与 PDF 定位高亮。",
-  },
-  {
-    title: "Docling 任务监控",
-    path: "/docling-tasks",
-    description: "查看解析任务状态、进度、失败页和每页结果，作为基础监控模块复用。",
-  },
-  {
-    title: "招投标知识库",
-    path: "/tender-kb",
-    description: "解析 PDF、使用招投标专用 chunk 入库向量库，并在同页发起知识库问答。",
-  },
-  {
     title: "知识库管理",
     path: "/knowledge-base",
     description: "统一管理知识库内容、入库操作、检索测试和删除，作为基础管理页面使用。",

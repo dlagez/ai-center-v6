@@ -4,9 +4,7 @@ import {
   deleteKnowledgeBase,
   deleteKnowledgeDocument,
   getKnowledgeBaseStats,
-  indexKnowledgeDocument,
   listKnowledgeDocuments,
-  listKnowledgeFiles,
   searchKnowledge,
 } from "../../services/api/knowledgeApi";
 import "./styles.css";
@@ -48,15 +46,12 @@ function getDocumentStatusLabel(document) {
 export default function KnowledgeBaseDetailPage() {
   const kbId = getKbId();
   const [base, setBase] = useState(null);
-  const [files, setFiles] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [activeTab, setActiveTab] = useState("documents");
-  const [selectedFileId, setSelectedFileId] = useState("");
   const [selectedDocumentKey, setSelectedDocumentKey] = useState("");
   const [question, setQuestion] = useState("");
   const [searchResult, setSearchResult] = useState(null);
   const [status, setStatus] = useState("正在加载知识库详情...");
-  const [isIndexing, setIsIndexing] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
   const selectedDocument = useMemo(
@@ -68,15 +63,12 @@ export default function KnowledgeBaseDetailPage() {
     if (!kbId) {
       throw new Error("缺少 kb_id");
     }
-    const [nextBase, nextDocuments, nextFiles] = await Promise.all([
+    const [nextBase, nextDocuments] = await Promise.all([
       getKnowledgeBaseStats(kbId),
       listKnowledgeDocuments(kbId),
-      listKnowledgeFiles(),
     ]);
     setBase(nextBase);
     setDocuments(nextDocuments);
-    setFiles(nextFiles);
-    setSelectedFileId((current) => current || nextFiles[0]?.file_id || "");
     setSelectedDocumentKey((current) => {
       if (current && nextDocuments.some((doc) => `${doc.file_id}:${doc.chunker}` === current)) {
         return current;
@@ -106,32 +98,6 @@ export default function KnowledgeBaseDetailPage() {
     }
   };
 
-  const handleIndex = async () => {
-    if (!base) {
-      setStatus("知识库未加载完成。");
-      return;
-    }
-    if (!selectedFileId) {
-      setStatus("请选择一个文件。");
-      return;
-    }
-    try {
-      setIsIndexing(true);
-      setStatus(`正在向 ${base.name} 入库...`);
-      const payload = await indexKnowledgeDocument(base.kb_id, {
-        fileId: selectedFileId,
-        chunkerType: base.chunker_type,
-      });
-      await refreshBase();
-      setSelectedDocumentKey(`${payload.file_id}:${payload.chunker}`);
-      setStatus(`入库完成：${payload.file_name}，共 ${payload.chunk_count} 个 chunks。`);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "入库失败");
-    } finally {
-      setIsIndexing(false);
-    }
-  };
-
   const handleDeleteDocument = async (document) => {
     if (!base) {
       return;
@@ -147,27 +113,6 @@ export default function KnowledgeBaseDetailPage() {
       setStatus("文档已移出当前知识库。");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "删除文档失败");
-    }
-  };
-
-  const handleRetryDocument = async (document) => {
-    if (!base) {
-      return;
-    }
-    try {
-      setIsIndexing(true);
-      setStatus(`正在重试 ${document.file_name} 的入库...`);
-      const payload = await indexKnowledgeDocument(base.kb_id, {
-        fileId: document.file_id,
-        chunkerType: document.chunker,
-      });
-      await refreshBase();
-      setSelectedDocumentKey(`${payload.file_id}:${payload.chunker}`);
-      setStatus(`重试成功：${payload.file_name}，共 ${payload.chunk_count} 个 chunks。`);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "重试失败");
-    } finally {
-      setIsIndexing(false);
     }
   };
 
@@ -270,27 +215,16 @@ export default function KnowledgeBaseDetailPage() {
               <header className="kb-section-head">
                 <div>
                   <h1>Documents</h1>
-                  <p>当前知识库中的文件列表、入库操作和基础状态都在这里统一查看。</p>
+                  <p>当前知识库中的文件列表和基础状态都在这里统一查看。</p>
                 </div>
                 <div className="kb-section-actions">
                   <button className="kb-ghost-button" type="button">
                     Metadata
                   </button>
-                  <button className="kb-primary-button" disabled={!selectedFileId || isIndexing} onClick={handleIndex} type="button">
-                    {isIndexing ? "入库中..." : "Add file"}
-                  </button>
                 </div>
               </header>
 
               <section className="kb-detail-toolbar">
-                <select onChange={(event) => setSelectedFileId(event.target.value)} value={selectedFileId}>
-                  <option value="">选择一个 PDF 文件</option>
-                  {files.map((file) => (
-                    <option key={file.file_id} value={file.file_id}>
-                      {file.file_name}
-                    </option>
-                  ))}
-                </select>
                 <div className="kb-detail-toolbar-pill">{base ? getChunkLabel(base.chunker_type) : "-"}</div>
                 <div className="kb-detail-toolbar-pill">{documents.length} Files</div>
               </section>
@@ -330,11 +264,6 @@ export default function KnowledgeBaseDetailPage() {
                           </span>
                         </button>
                         <div className="kb-row-actions">
-                          {document.status === "failed" ? (
-                            <button className="kb-row-retry" onClick={() => handleRetryDocument(document)} type="button">
-                              重试
-                            </button>
-                          ) : null}
                           <button className="kb-row-action" onClick={() => handleDeleteDocument(document)} type="button">
                             删除
                           </button>
@@ -342,7 +271,7 @@ export default function KnowledgeBaseDetailPage() {
                       </article>
                     ))
                   ) : (
-                    <div className="kb-empty-state">当前知识库还没有文档，先从上方选择文件并入库。</div>
+                    <div className="kb-empty-state">当前知识库还没有文档。</div>
                   )}
                 </div>
               </section>

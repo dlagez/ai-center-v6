@@ -32,12 +32,7 @@ export async function deleteManagedFile(fileId) {
   return parseJsonResponse(response);
 }
 
-export async function getManagedFileDetail(fileId, { taskId = "" } = {}) {
-  const params = new URLSearchParams();
-  if (taskId) {
-    params.set("task_id", taskId);
-  }
-  const suffix = params.toString() ? `?${params.toString()}` : "";
-  const response = await fetch(buildApiUrl(`/api/files/${fileId}${suffix}`));
+export async function getManagedFileDetail(fileId) {
+  const response = await fetch(buildApiUrl(`/api/files/${fileId}`));
   return parseJsonResponse(response);
 }

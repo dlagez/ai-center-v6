@@ -39,8 +39,6 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def init_db() -> None:
-    from src.db.models import docling_parse_result  # noqa: F401
-    from src.db.models import docling_parse_task  # noqa: F401
     from src.db.models import knowledge_base  # noqa: F401
     from src.db.models import knowledge_document  # noqa: F401
     from src.db.models import system_config  # noqa: F401

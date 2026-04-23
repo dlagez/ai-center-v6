@@ -2,12 +2,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.docling_routes import router as docling_router
 from src.api.file_manager_routes import router as file_manager_router
 from src.api.knowledge_routes import router as knowledge_router
 from src.api.pdf_preview_routes import router as pdf_preview_router
 from src.api.routes import router
-from src.api.tender_kb_routes import router as tender_kb_router
 from src.config.settings import settings
 from src.db.session import init_db
 from src.observability import flush_langfuse
@@ -36,8 +34,6 @@ app.include_router(router)
 app.include_router(file_manager_router)
 app.include_router(knowledge_router)
 app.include_router(pdf_preview_router)
-app.include_router(docling_router)
-app.include_router(tender_kb_router)
 
 
 @app.get("/health")

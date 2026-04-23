@@ -79,9 +79,6 @@ export default function KnowledgeBasePage() {
           <span className="kb-global-current">Knowledge</span>
         </div>
         <div className="kb-global-actions">
-          <a className="kb-ghost-link" href="/docling-tasks">
-            Tasks
-          </a>
           <a className="kb-ghost-link" href="/pdf-preview">
             Preview
           </a>

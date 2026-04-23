@@ -49,20 +49,6 @@ export async function listKnowledgeFiles() {
   return parseJsonResponse(response);
 }
 
-export async function indexKnowledgeDocument(kbId, { fileId, chunkerType }) {
-  const response = await fetch(buildApiUrl(`/api/knowledge/bases/${kbId}/documents/index`), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      file_id: fileId,
-      chunker_type: chunkerType || null,
-    }),
-  });
-  return parseJsonResponse(response);
-}
-
 export async function searchKnowledge(kbId, { query, fileId, chunkerType, limit = 5 }) {
   const response = await fetch(buildApiUrl(`/api/knowledge/bases/${kbId}/search`), {
     method: "POST",

@@ -13,7 +13,6 @@ from src.agents.sql.service import SqlAgentService
 from src.api.schemas import (
     AgenticRagRequest,
     FileUploadResponse,
-    IngestRequest,
     SearchRequest,
     SqlAgentRequest,
     SystemConfigCreateRequest,
@@ -27,7 +26,7 @@ from src.media.service import VideoInspectionService
 from src.models.llm import vision_completion
 from src.observability import observe
 from src.rag.agentic.service import AgenticRagService
-from src.rag.service import KnowledgeIngestionService, KnowledgeSearchService
+from src.rag.service import KnowledgeSearchService
 from src.repositories.system_config_repository import SystemConfigRepository
 from src.repositories.uploaded_file_repository import UploadedFileRepository
 from src.services.system_config_service import SystemConfigService
@@ -211,25 +210,6 @@ async def delete_system_config(config_id: int, db: Session = Depends(get_db)) ->
         service.delete_config(config_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-
-@router.post("/knowledge/ingest")
-async def ingest_knowledge(request: IngestRequest) -> dict:
-    service = KnowledgeIngestionService()
-
-    try:
-        with observe(
-            name="api.ingest_knowledge",
-            as_type="span",
-            input=request.model_dump(),
-        ):
-            result = service.ingest_path(source=request.source)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Knowledge ingestion failed: {exc}") from exc
-
-    return result.model_dump()
 
 
 @router.post("/knowledge/search")

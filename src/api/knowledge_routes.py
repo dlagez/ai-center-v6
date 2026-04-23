@@ -6,8 +6,6 @@ from src.api.schemas import PdfPreviewFileResponse
 from src.db.session import get_db
 from src.knowledge.management_service import KnowledgeManagementService
 from src.knowledge.schemas import SearchResult
-from src.repositories.docling_parse_result_repository import DoclingParseResultRepository
-from src.repositories.docling_parse_task_repository import DoclingParseTaskRepository
 from src.repositories.knowledge_base_repository import KnowledgeBaseRepository
 from src.repositories.knowledge_document_repository import KnowledgeDocumentRepository
 from src.repositories.uploaded_file_repository import UploadedFileRepository
@@ -73,23 +71,6 @@ class KnowledgeDocumentResponse(BaseModel):
     updated_at: str
 
 
-class KnowledgeIndexRequest(BaseModel):
-    file_id: str
-    chunker_type: str | None = None
-
-
-class KnowledgeIndexResponse(BaseModel):
-    kb_id: str
-    kb_name: str
-    file_id: str
-    file_name: str
-    chunker: str
-    chunk_count: int
-    collection_name: str
-    page_count: int
-    parse_status: str
-
-
 class KnowledgeSearchRequest(BaseModel):
     query: str = Field(..., min_length=1)
     file_id: str | None = None
@@ -120,8 +101,6 @@ class KnowledgeBaseDeleteResponse(BaseModel):
 def _build_service(db: Session) -> KnowledgeManagementService:
     return KnowledgeManagementService(
         UploadedFileRepository(db),
-        DoclingParseTaskRepository(db),
-        DoclingParseResultRepository(db),
         KnowledgeBaseRepository(db),
         KnowledgeDocumentRepository(db),
     )
@@ -219,22 +198,6 @@ async def list_knowledge_documents(
 async def list_knowledge_files(db: Session = Depends(get_db)) -> list[PdfPreviewFileResponse]:
     service = UploadedFileService(UploadedFileRepository(db))
     return service.list_pdf_files()
-
-
-@router.post("/api/knowledge/bases/{kb_id}/documents/index", response_model=KnowledgeIndexResponse)
-async def index_knowledge_document(
-    kb_id: str,
-    request: KnowledgeIndexRequest,
-    db: Session = Depends(get_db),
-) -> KnowledgeIndexResponse:
-    service = _build_service(db)
-    try:
-        result = service.index_file(kb_id, request.file_id, chunker_type=request.chunker_type)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-    return KnowledgeIndexResponse(**result)
 
 
 @router.delete("/api/knowledge/bases/{kb_id}/documents/{file_id}", response_model=KnowledgeDeleteResponse)

@@ -211,21 +211,29 @@ def _collect_blocks(payload, *, path: str = "root") -> list[tuple[str, dict]]:
 
 
 def _build_summary(doc_dict: dict, blocks: list[DoclingBlockPreview]) -> dict:
-    pages = doc_dict.get("pages") or {}
-    page_numbers = sorted(int(key) for key in pages.keys() if str(key).isdigit())
+    labels = [block.label for block in blocks]
     return {
-        "page_count": len(page_numbers),
-        "page_numbers": page_numbers,
-        "block_count": len(blocks),
-        "title": doc_dict.get("name") or "",
+        "total_pages": len(doc_dict.get("pages") or {}),
+        "text_blocks": sum(
+            1
+            for label in labels
+            if label in {"text", "paragraph", "title", "section_header", "page_header", "page_footer"}
+        ),
+        "table_blocks": sum(1 for label in labels if label == "table"),
+        "picture_blocks": sum(1 for label in labels if label == "picture"),
+        "key_value_items": len(doc_dict.get("key_value_items") or []),
+        "body_exists": bool(doc_dict.get("body")),
+        "furniture_exists": bool(doc_dict.get("furniture")),
+        "groups_exists": bool(doc_dict.get("groups")),
     }
 
 
 def _block_sort_key(block: DoclingBlockPreview) -> tuple:
-    if block.page_no is None:
-        return (1, 0, 0, 0, block.raw_path)
-    bbox = block.bbox_norm or [0.0, 0.0, 0.0, 0.0]
-    return (0, block.page_no, bbox[1], bbox[0], block.raw_path)
+    page_no = block.page_no or 0
+    if block.bbox_norm and len(block.bbox_norm) == 4:
+        x0, y0, x1, y1 = block.bbox_norm
+        return (page_no, y0, x0, y1 - y0, x1 - x0, block.label, block.raw_path)
+    return (page_no, 999.0, 999.0, 999.0, 999.0, block.label, block.raw_path)
 
 
 def _build_page_previews(
@@ -234,32 +242,30 @@ def _build_page_previews(
     doc,
     page_image_map: dict[int, int] | None,
 ) -> list[DoclingPagePreview]:
-    pages = doc_dict.get("pages") or {}
     previews: list[DoclingPagePreview] = []
+    raw_pages = doc_dict.get("pages") or {}
 
-    for key in sorted(pages.keys(), key=lambda item: int(item) if str(item).isdigit() else item):
-        try:
-            page_no = int(key)
-        except (TypeError, ValueError):
-            continue
-
+    for page_no in sorted(raw_pages.keys(), key=int):
         image_data_url = None
-        if doc is not None and hasattr(doc, "pages") and doc.pages:
-            page_index = page_image_map.get(page_no, page_no) - 1 if page_image_map else page_no - 1
-            if 0 <= page_index < len(doc.pages):
-                image = getattr(doc.pages[page_index], "image", None)
-                pil_image = getattr(image, "pil_image", None) if image is not None else None
-                if pil_image is not None:
-                    buffer = io.BytesIO()
-                    pil_image.save(buffer, format="PNG")
-                    image_data = base64.b64encode(buffer.getvalue()).decode("ascii")
-                    image_data_url = f"data:image/png;base64,{image_data}"
+        page_lookup_no = int(page_no)
+        if page_image_map is not None:
+            page_lookup_no = page_image_map.get(page_lookup_no, page_lookup_no)
+        page_item = doc.pages.get(page_lookup_no) if doc is not None and hasattr(doc, "pages") else None
+        page_image = getattr(page_item, "image", None)
+        pil_image = None
+        if page_image is not None and hasattr(page_image, "pil_image"):
+            pil_image = page_image.pil_image
+        if pil_image is not None:
+            buffer = io.BytesIO()
+            pil_image.save(buffer, format="PNG")
+            encoded = base64.b64encode(buffer.getvalue()).decode("utf-8")
+            image_data_url = f"data:image/png;base64,{encoded}"
 
         previews.append(
             DoclingPagePreview(
-                page_no=page_no,
+                page_no=int(page_no),
                 image_data_url=image_data_url,
-                block_count=block_counts.get(page_no, 0),
+                block_count=block_counts.get(int(page_no), 0),
             )
         )
 

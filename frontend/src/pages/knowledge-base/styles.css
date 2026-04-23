@@ -439,8 +439,30 @@ body {
   color: #1f9d55;
 }
 
-.kb-row-action {
+.kb-status-failed {
+  color: #c62828;
+}
+
+.kb-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
   margin-right: 16px;
+}
+
+.kb-row-action,
+.kb-row-retry {
+  margin: 0;
+}
+
+.kb-row-retry {
+  border: none;
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: #0b69ff;
+  color: #fff;
+  cursor: pointer;
 }
 
 .kb-empty-state {
@@ -542,6 +564,11 @@ body {
   }
 
   .kb-row-action {
+    margin: 0;
+  }
+
+  .kb-row-actions {
     margin: 0 18px 18px;
+    justify-content: flex-start;
   }
 }

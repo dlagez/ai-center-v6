@@ -1,4 +1,5 @@
 from collections.abc import Iterable
+from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
@@ -139,82 +140,127 @@ class KnowledgeManagementService:
     ) -> dict[str, Any]:
         base = self._get_base_entity(kb_id)
         file_record = self._get_file_record(file_id)
-        parse_result = self.parser_service.parse_pdf_file(file_id)
-        if parse_result.status != "success" or parse_result.docling_document is None:
-            raise ValueError(parse_result.error or "Docling parse failed")
-
         resolved_chunker = chunker_type or base.chunker_type
-        parsed_document = self.parser.build_parsed_document(
-            parse_result.docling_document,
-            source=file_record.object_name,
-        )
-        chunks = self._build_chunks(parsed_document, resolved_chunker)
-        vectors = embed_texts(
-            [chunk.text for chunk in chunks],
-            model=embedding_model or base.embedding_model,
-        )
-
-        self.delete_document(base.kb_id, file_id, chunker_type=resolved_chunker)
-
-        store = self._get_store(base.qdrant_collection)
-        store.ensure_collection()
-        points = [
-            models.PointStruct(
-                id=chunk.id,
-                vector=vector,
-                payload={
-                    "doc_id": chunk.doc_id,
-                    "source": chunk.source,
-                    "index": chunk.index,
-                    "text": chunk.text,
-                    "markdown": chunk.markdown,
-                    "headers": chunk.headers,
-                    "metadata": {
-                        **chunk.metadata,
-                        "kb_id": base.kb_id,
-                        "kb_name": base.name,
-                        "file_id": file_record.file_id,
-                        "file_name": file_record.file_name,
-                        "folder_path": file_record.folder_path,
-                        "chunker": resolved_chunker,
-                    },
-                },
-            )
-            for chunk, vector in zip(chunks, vectors, strict=True)
-        ]
-        if points:
-            store.client.upsert(collection_name=store.collection_name, points=points)
-
-        document = self.knowledge_document_repository.get_by_kb_id_and_file_id(
-            base.kb_id,
-            file_record.file_id,
+        document = self._prepare_index_record(
+            kb_id=base.kb_id,
+            file_record=file_record,
             chunker_type=resolved_chunker,
         )
-        sample_heading = self._extract_sample_heading(chunks)
-        if document is None:
-            document = KnowledgeDocument(
-                kb_id=base.kb_id,
-                file_id=file_record.file_id,
-                file_name=file_record.file_name,
+        self._set_document_stage(
+            document,
+            stage="parsing",
+            status="running",
+            parse_task_id=self._extract_parse_task_id(file_record.file_id),
+        )
+
+        parse_result = self.parser_service.parse_pdf_file(file_id)
+        if parse_result.status != "success" or parse_result.docling_document is None:
+            self._mark_document_failed(
+                document,
+                stage="parsing",
                 parse_task_id=self._extract_parse_task_id(file_record.file_id),
-                chunker_type=resolved_chunker,
-                status="active",
-                chunk_count=len(chunks),
                 page_count=len(parse_result.pages),
-                sample_heading=sample_heading,
-                folder_path=file_record.folder_path,
+                error_message=parse_result.error or "Docling parse failed",
             )
-            self.knowledge_document_repository.create(document)
-        else:
-            document.file_name = file_record.file_name
-            document.parse_task_id = self._extract_parse_task_id(file_record.file_id)
-            document.status = "active"
-            document.chunk_count = len(chunks)
-            document.page_count = len(parse_result.pages)
-            document.sample_heading = sample_heading
-            document.folder_path = file_record.folder_path
-            document.error_message = None
-            self.knowledge_document_repository.update(document)
+            self._refresh_base_counters(base.kb_id)
+            raise ValueError(parse_result.error or "Docling parse failed")
+
+        parse_task_id = self._extract_parse_task_id(file_record.file_id)
+        self._set_document_stage(
+            document,
+            stage="parsed",
+            status="running",
+            parse_task_id=parse_task_id,
+            page_count=len(parse_result.pages),
+        )
+
+        try:
+            self._set_document_stage(
+                document,
+                stage="chunking",
+                status="running",
+                parse_task_id=parse_task_id,
+                page_count=len(parse_result.pages),
+            )
+            parsed_document = self.parser.build_parsed_document(
+                parse_result.docling_document,
+                source=file_record.object_name,
+            )
+            chunks = self._build_chunks(parsed_document, resolved_chunker)
+            sample_heading = self._extract_sample_heading(chunks)
+            self._set_document_stage(
+                document,
+                stage="embedding",
+                status="running",
+                parse_task_id=parse_task_id,
+                page_count=len(parse_result.pages),
+                chunk_count=len(chunks),
+                sample_heading=sample_heading,
+            )
+            vectors = embed_texts(
+                [chunk.text for chunk in chunks],
+                model=embedding_model or base.embedding_model,
+            )
+
+            self._delete_qdrant_document(base.qdrant_collection, file_id, chunker_type=resolved_chunker)
+
+            store = self._get_store(base.qdrant_collection)
+            store.ensure_collection()
+            self._set_document_stage(
+                document,
+                stage="indexing",
+                status="running",
+                parse_task_id=parse_task_id,
+                page_count=len(parse_result.pages),
+                chunk_count=len(chunks),
+                sample_heading=sample_heading,
+            )
+            points = [
+                models.PointStruct(
+                    id=chunk.id,
+                    vector=vector,
+                    payload={
+                        "doc_id": chunk.doc_id,
+                        "source": chunk.source,
+                        "index": chunk.index,
+                        "text": chunk.text,
+                        "markdown": chunk.markdown,
+                        "headers": chunk.headers,
+                        "metadata": {
+                            **chunk.metadata,
+                            "kb_id": base.kb_id,
+                            "kb_name": base.name,
+                            "file_id": file_record.file_id,
+                            "file_name": file_record.file_name,
+                            "folder_path": file_record.folder_path,
+                            "chunker": resolved_chunker,
+                        },
+                    },
+                )
+                for chunk, vector in zip(chunks, vectors, strict=True)
+            ]
+            if points:
+                store.client.upsert(collection_name=store.collection_name, points=points)
+        except Exception as exc:
+            self._mark_document_failed(
+                document,
+                stage=document.current_stage,
+                parse_task_id=parse_task_id,
+                page_count=len(parse_result.pages),
+                chunk_count=document.chunk_count,
+                sample_heading=document.sample_heading or "",
+                error_message=str(exc),
+            )
+            self._refresh_base_counters(base.kb_id)
+            raise
+
+        self._mark_document_success(
+            document,
+            parse_task_id=parse_task_id,
+            chunk_count=len(chunks),
+            page_count=len(parse_result.pages),
+            sample_heading=sample_heading,
+        )
 
         self._refresh_base_counters(base.kb_id)
         base = self._get_base_entity(base.kb_id)
@@ -238,7 +284,27 @@ class KnowledgeManagementService:
         chunker_type: str | None = None,
     ) -> dict[str, str]:
         base = self._get_base_entity(kb_id)
-        store = self._get_store(base.qdrant_collection)
+        self._delete_qdrant_document(base.qdrant_collection, file_id, chunker_type=chunker_type)
+
+        document = self.knowledge_document_repository.get_by_kb_id_and_file_id(
+            kb_id,
+            file_id,
+            chunker_type=chunker_type,
+        )
+        if document is not None:
+            self.knowledge_document_repository.delete(document)
+            self._refresh_base_counters(kb_id)
+
+        return {"kb_id": kb_id, "file_id": file_id, "chunker": chunker_type or "all"}
+
+    def _delete_qdrant_document(
+        self,
+        collection_name: str,
+        file_id: str,
+        *,
+        chunker_type: str | None = None,
+    ) -> None:
+        store = self._get_store(collection_name)
         must_conditions = [
             models.FieldCondition(
                 key="metadata.file_id",
@@ -256,17 +322,6 @@ class KnowledgeManagementService:
             collection_name=store.collection_name,
             points_selector=models.FilterSelector(filter=models.Filter(must=must_conditions)),
         )
-
-        document = self.knowledge_document_repository.get_by_kb_id_and_file_id(
-            kb_id,
-            file_id,
-            chunker_type=chunker_type,
-        )
-        if document is not None:
-            self.knowledge_document_repository.delete(document)
-            self._refresh_base_counters(kb_id)
-
-        return {"kb_id": kb_id, "file_id": file_id, "chunker": chunker_type or "all"}
 
     def search(
         self,
@@ -384,11 +439,18 @@ class KnowledgeManagementService:
             "parse_task_id": document.parse_task_id or "",
             "chunker": document.chunker_type,
             "status": document.status,
+            "retry_count": document.retry_count,
+            "current_stage": document.current_stage,
+            "last_error_stage": document.last_error_stage or "",
             "chunk_count": document.chunk_count,
             "page_count": document.page_count,
             "sample_heading": document.sample_heading or "",
             "folder_path": document.folder_path or "",
             "error_message": document.error_message or "",
+            "last_index_started_at": document.last_index_started_at.isoformat() if document.last_index_started_at else "",
+            "last_index_finished_at": document.last_index_finished_at.isoformat() if document.last_index_finished_at else "",
+            "last_retry_at": document.last_retry_at.isoformat() if document.last_retry_at else "",
+            "indexed_at": document.indexed_at.isoformat() if document.indexed_at else "",
             "created_at": document.created_at.isoformat() if document.created_at else "",
             "updated_at": document.updated_at.isoformat() if document.updated_at else "",
         }
@@ -398,6 +460,124 @@ class KnowledgeManagementService:
         if task is None:
             return None
         return task.task_id
+
+    def _prepare_index_record(
+        self,
+        *,
+        kb_id: str,
+        file_record,
+        chunker_type: str,
+    ) -> KnowledgeDocument:
+        document = self.knowledge_document_repository.get_by_kb_id_and_file_id(
+            kb_id,
+            file_record.file_id,
+            chunker_type=chunker_type,
+        )
+        now = datetime.now()
+        if document is None:
+            document = KnowledgeDocument(
+                kb_id=kb_id,
+                file_id=file_record.file_id,
+                file_name=file_record.file_name,
+                parse_task_id=None,
+                chunker_type=chunker_type,
+                status="pending",
+                chunk_count=0,
+                page_count=0,
+                sample_heading=None,
+                folder_path=file_record.folder_path,
+                retry_count=0,
+                current_stage="pending",
+                last_error_stage=None,
+                error_message=None,
+                last_index_started_at=now,
+                last_index_finished_at=None,
+                last_retry_at=None,
+                indexed_at=None,
+            )
+            return self.knowledge_document_repository.create(document)
+
+        if document.status == "failed":
+            document.retry_count += 1
+            document.last_retry_at = now
+        document.file_name = file_record.file_name
+        document.folder_path = file_record.folder_path
+        document.last_index_started_at = now
+        document.last_index_finished_at = None
+        document.indexed_at = None
+        document.last_error_stage = None
+        document.error_message = None
+        return self.knowledge_document_repository.update(document)
+
+    def _set_document_stage(
+        self,
+        document: KnowledgeDocument,
+        *,
+        stage: str,
+        status: str,
+        parse_task_id: str | None,
+        page_count: int | None = None,
+        chunk_count: int | None = None,
+        sample_heading: str | None = None,
+    ) -> KnowledgeDocument:
+        document.parse_task_id = parse_task_id
+        document.current_stage = stage
+        document.status = status
+        if page_count is not None:
+            document.page_count = page_count
+        if chunk_count is not None:
+            document.chunk_count = chunk_count
+        if sample_heading is not None:
+            document.sample_heading = sample_heading or None
+        document.last_error_stage = None
+        document.error_message = None
+        return self.knowledge_document_repository.update(document)
+
+    def _mark_document_failed(
+        self,
+        document: KnowledgeDocument,
+        *,
+        stage: str,
+        parse_task_id: str | None,
+        page_count: int,
+        error_message: str,
+        chunk_count: int | None = None,
+        sample_heading: str | None = None,
+    ) -> KnowledgeDocument:
+        document.parse_task_id = parse_task_id
+        document.status = "failed"
+        document.current_stage = stage
+        document.page_count = page_count
+        if chunk_count is not None:
+            document.chunk_count = chunk_count
+        if sample_heading is not None:
+            document.sample_heading = sample_heading or None
+        document.last_error_stage = stage
+        document.error_message = error_message
+        document.last_index_finished_at = datetime.now()
+        return self.knowledge_document_repository.update(document)
+
+    def _mark_document_success(
+        self,
+        document: KnowledgeDocument,
+        *,
+        parse_task_id: str | None,
+        chunk_count: int,
+        page_count: int,
+        sample_heading: str,
+    ) -> KnowledgeDocument:
+        document.parse_task_id = parse_task_id
+        document.status = "active"
+        document.current_stage = "indexed"
+        document.chunk_count = chunk_count
+        document.page_count = page_count
+        document.sample_heading = sample_heading or None
+        document.last_error_stage = None
+        document.error_message = None
+        now = datetime.now()
+        document.last_index_finished_at = now
+        document.indexed_at = now
+        return self.knowledge_document_repository.update(document)
 
     def _extract_sample_heading(self, chunks: Iterable) -> str:
         for chunk in chunks:

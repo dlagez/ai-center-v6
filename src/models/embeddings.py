@@ -5,6 +5,8 @@ from litellm import embedding
 from src.config.settings import settings
 from src.observability import observe
 
+EMBEDDING_PROVIDER_MAX_BATCH_SIZE = 10
+
 
 def _extract_embedding_vector(item: Any) -> list[float]:
     if isinstance(item, dict):
@@ -22,7 +24,7 @@ def embed_texts(
 
     model_name = model or settings.embedding_model
     vectors: list[list[float]] = []
-    batch_size = max(settings.embedding_batch_size, 1)
+    batch_size = min(max(settings.embedding_batch_size, 1), EMBEDDING_PROVIDER_MAX_BATCH_SIZE)
 
     with observe(
         name="litellm.embed_texts",

@@ -57,11 +57,18 @@ class KnowledgeDocumentResponse(BaseModel):
     parse_task_id: str
     chunker: str
     status: str
+    retry_count: int
+    current_stage: str
+    last_error_stage: str
     chunk_count: int
     page_count: int
     sample_heading: str
     folder_path: str
     error_message: str
+    last_index_started_at: str
+    last_index_finished_at: str
+    last_retry_at: str
+    indexed_at: str
     created_at: str
     updated_at: str
 
@@ -225,6 +232,8 @@ async def index_knowledge_document(
         result = service.index_file(kb_id, request.file_id, chunker_type=request.chunker_type)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     return KnowledgeIndexResponse(**result)
 
 

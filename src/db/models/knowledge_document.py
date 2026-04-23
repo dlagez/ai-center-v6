@@ -18,12 +18,19 @@ class KnowledgeDocument(Base):
     file_name: Mapped[str] = mapped_column(String(255), nullable=False)
     parse_task_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     chunker_type: Mapped[str] = mapped_column(String(32), nullable=False, default="default")
-    status: Mapped[str] = mapped_column(String(32), nullable=False, default="active", index=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending", index=True)
     chunk_count: Mapped[int] = mapped_column(nullable=False, default=0)
     page_count: Mapped[int] = mapped_column(nullable=False, default=0)
     sample_heading: Mapped[str | None] = mapped_column(String(255), nullable=True)
     folder_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    retry_count: Mapped[int] = mapped_column(nullable=False, default=0)
+    current_stage: Mapped[str] = mapped_column(String(32), nullable=False, default="pending", index=True)
+    last_error_stage: Mapped[str | None] = mapped_column(String(32), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    last_index_started_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
+    last_index_finished_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
+    last_retry_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
+    indexed_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(),
         server_default=func.now(),

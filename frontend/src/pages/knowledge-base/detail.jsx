@@ -35,6 +35,16 @@ function getChunkLabel(value) {
   return value === "tender" ? "PARENT-CHILD / TENDER" : "GENERAL / DEFAULT";
 }
 
+function getDocumentStatusLabel(document) {
+  if (document.status === "failed") {
+    return "Failed";
+  }
+  if (document.status === "running") {
+    return `Running / ${document.current_stage || "-"}`;
+  }
+  return "Available";
+}
+
 export default function KnowledgeBaseDetailPage() {
   const kbId = getKbId();
   const [base, setBase] = useState(null);
@@ -137,6 +147,27 @@ export default function KnowledgeBaseDetailPage() {
       setStatus("文档已移出当前知识库。");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "删除文档失败");
+    }
+  };
+
+  const handleRetryDocument = async (document) => {
+    if (!base) {
+      return;
+    }
+    try {
+      setIsIndexing(true);
+      setStatus(`正在重试 ${document.file_name} 的入库...`);
+      const payload = await indexKnowledgeDocument(base.kb_id, {
+        fileId: document.file_id,
+        chunkerType: document.chunker,
+      });
+      await refreshBase();
+      setSelectedDocumentKey(`${payload.file_id}:${payload.chunker}`);
+      setStatus(`重试成功：${payload.file_name}，共 ${payload.chunk_count} 个 chunks。`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "重试失败");
+    } finally {
+      setIsIndexing(false);
     }
   };
 
@@ -292,13 +323,22 @@ export default function KnowledgeBaseDetailPage() {
                             <em>{document.folder_path || "未记录目录"}</em>
                           </span>
                           <span>{getChunkLabel(document.chunker)}</span>
-                          <span>{document.chunk_count}</span>
+                          <span>{document.chunk_count || "-"}</span>
                           <span>{formatTime(document.updated_at)}</span>
-                          <span className="kb-status-ok">Available</span>
+                          <span className={document.status === "failed" ? "kb-status-failed" : "kb-status-ok"}>
+                            {getDocumentStatusLabel(document)}
+                          </span>
                         </button>
-                        <button className="kb-row-action" onClick={() => handleDeleteDocument(document)} type="button">
-                          删除
-                        </button>
+                        <div className="kb-row-actions">
+                          {document.status === "failed" ? (
+                            <button className="kb-row-retry" onClick={() => handleRetryDocument(document)} type="button">
+                              重试
+                            </button>
+                          ) : null}
+                          <button className="kb-row-action" onClick={() => handleDeleteDocument(document)} type="button">
+                            删除
+                          </button>
+                        </div>
                       </article>
                     ))
                   ) : (
@@ -306,6 +346,25 @@ export default function KnowledgeBaseDetailPage() {
                   )}
                 </div>
               </section>
+
+              {selectedDocument ? (
+                <section className="kb-current-box">
+                  <strong>当前文档状态</strong>
+                  <pre>{JSON.stringify({
+                    file_name: selectedDocument.file_name,
+                    status: selectedDocument.status,
+                    current_stage: selectedDocument.current_stage,
+                    last_error_stage: selectedDocument.last_error_stage,
+                    retry_count: selectedDocument.retry_count,
+                    parse_task_id: selectedDocument.parse_task_id,
+                    error_message: selectedDocument.error_message,
+                    last_index_started_at: selectedDocument.last_index_started_at,
+                    last_index_finished_at: selectedDocument.last_index_finished_at,
+                    last_retry_at: selectedDocument.last_retry_at,
+                    indexed_at: selectedDocument.indexed_at,
+                  }, null, 2)}</pre>
+                </section>
+              ) : null}
             </>
           ) : (
             <>

@@ -197,8 +197,13 @@ class DoclingParserService:
         file_name: str,
         cached_results: list[DoclingParseResult],
     ) -> DoclingParseServiceResult:
-        merged_result = self._merge_page_results(cached_results)
-        merged_docling_document = self.parser.deserialize_doc(merged_result)
+        page_docs = [
+            self.parser.deserialize_doc(json.loads(item.result_json or "{}"))
+            for item in cached_results
+            if item.result_json
+        ]
+        merged_docling_document = self.parser.concatenate_docs(page_docs)
+        merged_result = merged_docling_document.export_to_dict()
         visualized = self.parser.build_visualized_payload(merged_docling_document)
         return DoclingParseServiceResult(
             file_id=file_id,
@@ -264,24 +269,24 @@ class DoclingParserService:
         file_id: str,
         task: DoclingParseTask,
         temp_path: str,
-    ) -> tuple[list[dict], list[DoclingParseResult], int]:
-        batch_results: list[dict] = []
+    ) -> tuple[list, list[DoclingParseResult], int]:
+        batch_docs: list = []
         batch_page_entities: list[DoclingParseResult] = []
         start_page = 1
         batch_no = 1
 
         while True:
-            batch_result, batch_entities = self._parse_single_batch(
+            batch_doc, batch_entities = self._parse_single_batch(
                 file_id=file_id,
                 task=task,
                 temp_path=temp_path,
                 start_page=start_page,
                 batch_no=batch_no,
             )
-            if batch_result is None or not batch_entities:
+            if batch_doc is None or not batch_entities:
                 break
 
-            batch_results.append(batch_result)
+            batch_docs.append(batch_doc)
             batch_page_entities.extend(batch_entities)
             max_page_no = max(item.page_no for item in batch_entities)
 
@@ -297,7 +302,7 @@ class DoclingParserService:
             start_page = max_page_no + 1
             batch_no += 1
 
-        return batch_results, batch_page_entities, batch_no
+        return batch_docs, batch_page_entities, batch_no
 
     def _parse_single_batch(
         self,
@@ -307,7 +312,7 @@ class DoclingParserService:
         temp_path: str,
         start_page: int,
         batch_no: int,
-    ) -> tuple[dict | None, list[DoclingParseResult]]:
+    ) -> tuple[object | None, list[DoclingParseResult]]:
         end_page = start_page + self.batch_size - 1
         page_range = (start_page, end_page)
         docling_document = self.parser.parse(
@@ -329,7 +334,7 @@ class DoclingParserService:
             docling_document_dict=docling_document.export_to_dict(),
             batch_no=batch_no,
         )
-        return parsed, batch_entities
+        return docling_document, batch_entities
 
     def _finalize_success(
         self,
@@ -337,7 +342,7 @@ class DoclingParserService:
         task: DoclingParseTask,
         file_id: str,
         file_name: str,
-        batch_results: list[dict],
+        batch_results: list,
         batch_page_entities: list[DoclingParseResult],
         last_batch_no: int,
     ) -> DoclingParseServiceResult:
@@ -350,8 +355,8 @@ class DoclingParserService:
         task.finished_at = datetime.now()
         self._save_task(task)
 
-        merged_result = self._merge_visualized_batches(batch_results)
-        merged_docling_document = self.parser.deserialize_doc(merged_result)
+        merged_docling_document = self.parser.concatenate_docs(batch_results)
+        merged_result = merged_docling_document.export_to_dict()
         visualized = self.parser.build_visualized_payload(merged_docling_document)
         return DoclingParseServiceResult(
             file_id=file_id,

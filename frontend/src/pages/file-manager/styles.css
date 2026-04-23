@@ -1,0 +1,222 @@
+:root {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  color: #102a43;
+  background:
+    radial-gradient(circle at top left, rgba(11, 105, 255, 0.14), transparent 26%),
+    radial-gradient(circle at bottom right, rgba(0, 153, 102, 0.12), transparent 24%),
+    linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.file-manager-shell {
+  width: min(1560px, calc(100% - 24px));
+  margin: 20px auto 32px;
+}
+
+.file-manager-hero,
+.file-manager-status,
+.file-manager-toolbar,
+.file-manager-table-shell {
+  border: 1px solid rgba(16, 42, 67, 0.08);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 14px 32px rgba(53, 80, 112, 0.08);
+}
+
+.file-manager-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px;
+  margin-bottom: 12px;
+}
+
+.file-manager-eyebrow {
+  margin: 0 0 8px;
+  color: #0b69ff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.file-manager-hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+}
+
+.file-manager-lead {
+  margin: 12px 0 0;
+  max-width: 760px;
+  color: #486581;
+  line-height: 1.7;
+}
+
+.file-manager-back {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #486581;
+  color: #fff;
+  text-decoration: none;
+}
+
+.file-manager-status {
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  color: #486581;
+}
+
+.file-manager-toolbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.file-manager-upload-box,
+.file-manager-filter-box {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+}
+
+.file-manager-field {
+  display: grid;
+  gap: 6px;
+  min-width: 220px;
+}
+
+.file-manager-field span {
+  color: #486581;
+}
+
+.file-manager-field input,
+.file-manager-field select {
+  padding: 10px 12px;
+  border: 1px solid #bcccdc;
+  border-radius: 12px;
+  background: #fff;
+  font: inherit;
+}
+
+.file-manager-upload-button,
+.file-manager-refresh,
+.file-manager-row button {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  color: #fff;
+  font: inherit;
+}
+
+.file-manager-upload-button {
+  position: relative;
+  overflow: hidden;
+  background: #0b69ff;
+}
+
+.file-manager-upload-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.file-manager-upload-button.is-disabled {
+  opacity: 0.7;
+}
+
+.file-manager-refresh {
+  background: #486581;
+}
+
+.file-manager-row button {
+  background: #c62828;
+}
+
+.file-manager-table-shell {
+  overflow: hidden;
+}
+
+.file-manager-table-head,
+.file-manager-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 2fr) 120px 180px 180px 100px 180px 90px;
+  align-items: center;
+}
+
+.file-manager-table-head {
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(16, 42, 67, 0.08);
+  color: #7b8794;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+}
+
+.file-manager-table-body {
+  display: grid;
+}
+
+.file-manager-row {
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(16, 42, 67, 0.06);
+}
+
+.file-manager-row:last-child {
+  border-bottom: none;
+}
+
+.file-manager-name {
+  display: grid;
+  gap: 4px;
+}
+
+.file-manager-name strong {
+  white-space: normal;
+  word-break: break-word;
+}
+
+.file-manager-name em {
+  color: #486581;
+  font-style: normal;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.file-manager-empty {
+  padding: 28px 20px;
+  color: #486581;
+}
+
+@media (max-width: 1280px) {
+  .file-manager-toolbar,
+  .file-manager-upload-box,
+  .file-manager-filter-box,
+  .file-manager-hero {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 960px) {
+  .file-manager-table-head {
+    display: none;
+  }
+
+  .file-manager-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}

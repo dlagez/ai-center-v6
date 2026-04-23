@@ -2,6 +2,11 @@ import "./styles.css";
 
 const NAV_ITEMS = [
   {
+    title: "文件管理",
+    path: "/file-manager",
+    description: "统一上传、查看和删除文件记录，不触发解析，作为基础文件管理页面使用。",
+  },
+  {
     title: "PDF 预览",
     path: "/pdf-preview",
     description: "上传 PDF、查看文件列表，并使用原始 PDF 预览与高亮框调试。",

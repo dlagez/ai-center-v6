@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.docling_routes import router as docling_router
+from src.api.file_manager_routes import router as file_manager_router
 from src.api.knowledge_routes import router as knowledge_router
 from src.api.pdf_preview_routes import router as pdf_preview_router
 from src.api.routes import router
@@ -32,6 +33,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(router)
+app.include_router(file_manager_router)
 app.include_router(knowledge_router)
 app.include_router(pdf_preview_router)
 app.include_router(docling_router)

@@ -60,6 +60,14 @@ class DoclingParser:
     def deserialize_doc(doc_dict: dict) -> DoclingDocument:
         return DoclingDocument.model_validate(doc_dict)
 
+    @staticmethod
+    def concatenate_docs(docs: list[DoclingDocument]) -> DoclingDocument:
+        if not docs:
+            raise ValueError("At least one DoclingDocument is required")
+        if len(docs) == 1:
+            return docs[0]
+        return DoclingDocument.concatenate(docs)
+
     def build_parsed_document(
         self,
         doc: DoclingDocument,

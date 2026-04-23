@@ -64,6 +64,19 @@ class UploadedFileService:
     def list_pdf_files(self) -> list[PdfPreviewFileResponse]:
         return [self._to_pdf_response(item) for item in self.repository.list_pdf_files()]
 
+    def list_files(self, *, biz_type: str | None = None, limit: int = 500) -> list[dict]:
+        return [self._to_file_response(item) for item in self.repository.list_files(biz_type=biz_type, limit=limit)]
+
+    def delete_file(self, file_id: str) -> dict[str, str]:
+        entity = self.repository.get_by_file_id(file_id)
+        if entity is None or entity.status != "active":
+            raise ValueError("File not found")
+
+        get_file_service().delete_file(entity.object_name)
+        entity.status = "deleted"
+        self.repository.update(entity)
+        return {"file_id": entity.file_id, "file_name": entity.file_name}
+
     def get_pdf_file(self, file_id: str) -> PdfPreviewFileResponse:
         entity = self.repository.get_by_file_id(file_id)
         if entity is None or entity.status != "active" or entity.content_type != "application/pdf":
@@ -97,3 +110,20 @@ class UploadedFileService:
             file_ext=entity.file_ext,
             created_at=entity.created_at,
         )
+
+    @staticmethod
+    def _to_file_response(entity: UploadedFile) -> dict:
+        return {
+            "file_id": entity.file_id,
+            "file_name": entity.file_name,
+            "stored_name": entity.stored_name,
+            "object_name": entity.object_name,
+            "bucket_name": entity.bucket_name,
+            "biz_type": entity.biz_type,
+            "date_folder": entity.date_folder,
+            "folder_path": entity.folder_path,
+            "content_type": entity.content_type,
+            "file_size": entity.file_size,
+            "file_ext": entity.file_ext,
+            "created_at": entity.created_at,
+        }
